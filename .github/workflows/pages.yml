@@ -1,0 +1,54 @@
+name: Build and deploy Novum
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  repository_dispatch:
+    types: [codex-updated]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Novum
+        uses: actions/checkout@v4
+
+      - name: Check out the Obsidian vault
+        uses: actions/checkout@v4
+        with:
+          repository: Madison-Davis/MajorProject-Compaulo-Codex
+          ref: main
+          token: ${{ secrets.CODEX_TOKEN }}
+          path: source-vault
+          persist-credentials: false
+
+      - name: Build Novum pages
+        run: >-
+          python3 scripts/build-novum.py
+          "source-vault/Personal/Personal - Christian/Christian - Novum"
+          site
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
