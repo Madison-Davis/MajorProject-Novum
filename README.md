@@ -22,6 +22,10 @@ GitHub Actions checks out the latest vault, rebuilds the category and chapter
 pages, and deploys them to GitHub Pages. Pushes to this repository and manual
 workflow dispatches also build and deploy the current vault content.
 
+Novum source notes must be committed to `MajorProject-Compaulo-Codex` under
+`Personal/Personal - Christian/Christian - Novum`; local Obsidian files that
+are ignored or uncommitted are not available to the Actions build.
+
 The site imports `https://compaulo.com/styles.css` so the landing page and
 chapter reader use the same stylesheet as the Compaulo Codex page.
 
