@@ -3,12 +3,15 @@
 
 from __future__ import annotations
 
+import argparse
 import html
 import re
 import shutil
 import sys
 from pathlib import Path
 from urllib.parse import quote
+
+from sheets import load_topics, render_table
 
 
 def slugify(value: str) -> str:
@@ -173,9 +176,11 @@ def render_page(title: str, chapters: list[dict[str, object]]) -> str:
 '''
 
 
-def build(source_root: Path, output_root: Path) -> int:
+def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = None, include_sheets: bool = False) -> int:
     if not source_root.is_dir():
         raise SystemExit(f"Source folder not found: {source_root}")
+
+    sheet_topics = load_topics(sheets_workbook) if include_sheets or sheets_workbook else {}
 
     if output_root.exists():
         shutil.rmtree(output_root)
@@ -198,6 +203,10 @@ def build(source_root: Path, output_root: Path) -> int:
         cards = []
 
         for note_path in note_files:
+            stem = note_path.stem
+            card_title = re.sub(r"^[^-]+\s*-\s*", "", stem, count=1).strip() or stem
+            if card_title.casefold() == "template":
+                continue
             relative_stem = note_path.relative_to(category_dir).with_suffix("")
             note_slug = "-".join(slugify(part) for part in relative_stem.parts).strip("-")
             if not note_slug:
@@ -205,8 +214,6 @@ def build(source_root: Path, output_root: Path) -> int:
             output_path = output_root / "pages" / category_slug / f"{note_slug}.html"
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            stem = note_path.stem
-            card_title = re.sub(r"^[^-]+\s*-\s*", "", stem, count=1).strip() or stem
             chapters = parse_chapters(strip_frontmatter(note_path.read_text(encoding="utf-8")))
             output_path.write_text(render_page(stem.upper(), chapters), encoding="utf-8")
 
@@ -215,6 +222,19 @@ def build(source_root: Path, output_root: Path) -> int:
                 f'<a class="course-card" href="{html.escape(href, quote=True)}">'
                 f'<h3>{html.escape(card_title)}</h3></a>'
             )
+            total_pages += 1
+
+        for sheet_name, cells in sheet_topics.pop(category, []):
+            sheet_slug = "sheet-" + slugify(sheet_name)
+            output_path = output_root / "pages" / category_slug / f"{sheet_slug}.html"
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            page = render_page(sheet_name, [{"title": sheet_name, "sections": []}])
+            page = page.replace('<p>This chapter is empty.</p>', render_table(sheet_name, cells))
+            page = page.replace('>CHAPTERS</p>', '>CONTENTS</p>').replace('CHAPTER 1</p>', 'REFERENCE</p>')
+            page = page.replace('<body>', '<body class="sheet-page">')
+            output_path.write_text(page, encoding="utf-8")
+            cards.append(f'<a class="course-card" href="pages/{category_slug}/{sheet_slug}.html">'
+                         f'<h3>{html.escape(sheet_name)}</h3></a>')
             total_pages += 1
 
         if not cards:
@@ -228,6 +248,9 @@ def build(source_root: Path, output_root: Path) -> int:
             f'<div class="course-grid lab-accord-grid">{"".join(cards)}</div>'
             f'</div></div></div>'
         )
+
+    if sheet_topics:
+        raise ValueError(f"Spreadsheet categories have no matching Obsidian folder: {', '.join(sheet_topics)}")
 
     index = f'''<!doctype html>
 <html lang="en">
@@ -291,6 +314,10 @@ def build(source_root: Path, output_root: Path) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        raise SystemExit("Usage: build-novum.py SOURCE_FOLDER OUTPUT_FOLDER")
-    build(Path(sys.argv[1]), Path(sys.argv[2]))
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source_folder", type=Path)
+    parser.add_argument("output_folder", type=Path)
+    parser.add_argument("--google-sheets", action="store_true", help="Download the Novum workbook")
+    parser.add_argument("--sheets-workbook", type=Path, help="Use a local XLSX workbook instead")
+    args = parser.parse_args()
+    build(args.source_folder, args.output_folder, args.sheets_workbook, args.google_sheets)

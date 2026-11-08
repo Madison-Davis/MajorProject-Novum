@@ -1,3 +1,5 @@
 # Generated Pages content is built from the private vault during deployment.
 /site/
 /source-vault/
+# Python build caches.
+__pycache__/

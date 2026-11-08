@@ -3,6 +3,8 @@ name: Build and deploy Novum
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [codex-updated]
@@ -40,6 +42,7 @@ jobs:
           python3 scripts/build-novum.py
           "source-vault/Personal/Personal - Christian/Christian - Novum"
           site
+          --google-sheets
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
