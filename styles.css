@@ -10,7 +10,8 @@
 .sheet-page .sheet-table { display: table; overflow: visible; border-collapse: separate; border-spacing: 0; min-width: 100%; table-layout: fixed; font-size: .875rem; line-height: 1.7; color: #d3d3d3; text-align: left; }
 .sheet-table caption { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
 .sheet-table th, .sheet-table td { padding: 1.1rem 1.25rem; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; border: 0; border-bottom: 1px solid #ffffff0c; border-right: 1px solid #ffffff08; }
-.sheet-page .sheet-table thead th { position: sticky; top: 0; z-index: 2; background: #262626; color: #eeeeee; font-size: .72rem; font-weight: 700; letter-spacing: .065em; text-transform: uppercase; white-space: nowrap; overflow-wrap: normal; border-bottom: 1px solid #ffffff12; padding-block: 1rem; }
+.sheet-page .sheet-table thead { position: sticky; top: 0; z-index: 2; background: linear-gradient(165deg, var(--card-bg-start, #111111), var(--card-bg-mid, #1a1a1a) 52%, var(--card-bg-end, #202020)); }
+.sheet-page .sheet-table thead th { background: transparent; color: #eeeeee; font-size: .72rem; font-weight: 700; letter-spacing: .065em; text-transform: uppercase; white-space: nowrap; overflow-wrap: normal; border-bottom: 1px solid #ffffff12; padding-block: 1rem; }
 .sheet-table tbody tr { background: #111111; }
 .sheet-table tbody tr:hover { background: #353535; }
 .sheet-table tbody th[scope="row"] { color: #eeeeee; font-weight: 500; }
