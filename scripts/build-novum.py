@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import hashlib
 import re
 import shutil
 import sys
@@ -12,6 +13,11 @@ from pathlib import Path
 from urllib.parse import quote
 
 from sheets import load_topics, render_table
+
+
+def stylesheet_version() -> str:
+    stylesheet = Path(__file__).resolve().parents[1] / "styles.css"
+    return hashlib.sha256(stylesheet.read_bytes()).hexdigest()[:12]
 
 
 def slugify(value: str) -> str:
@@ -138,7 +144,7 @@ def render_page(title: str, chapters: list[dict[str, object]]) -> str:
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="../../styles.css?v={stylesheet_version()}">
 </head>
 <body>
     <header class="site-header"><div class="container nav-wrap">
@@ -263,7 +269,7 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v={stylesheet_version()}">
 </head>
 <body>
     <header class="site-header"><div class="container nav-wrap">

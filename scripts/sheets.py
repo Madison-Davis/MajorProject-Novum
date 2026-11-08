@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import io
+import math
 import posixpath
 import re
 import warnings
@@ -15,6 +16,25 @@ NS = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
 ALIASES = {"paul's three missions": 'Pauls Journeys', 'comparative religion apolgetics': 'Comparative Religion'}
 
 
+class SheetCells(dict):
+    """Cell values with spreadsheet header-format metadata."""
+    def __init__(self):
+        super().__init__()
+        self.grey_cells = set()
+
+
+def is_grey_fill(fill):
+    pattern = fill.find('s:patternFill', NS)
+    if pattern is None or pattern.get('patternType') != 'solid':
+        return False
+    color = pattern.find('s:fgColor', NS)
+    rgb = color.get('rgb', '')[-6:] if color is not None else ''
+    if len(rgb) != 6:
+        return False
+    channels = [int(rgb[i:i + 2], 16) for i in (0, 2, 4)]
+    return max(channels) - min(channels) <= 12 and 40 <= sum(channels) / 3 <= 248
+
+
 def read_workbook(data: bytes, hyperlinks: dict | None = None) -> dict[str, dict]:
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         def xml(path):
@@ -23,6 +43,7 @@ def read_workbook(data: bytes, hyperlinks: dict | None = None) -> dict[str, dict
         if 'xl/sharedStrings.xml' in archive.namelist():
             strings = [''.join(node.itertext()) for node in xml('xl/sharedStrings.xml').findall('s:si', NS)]
         styles = xml('xl/styles.xml')
+        fills = list(styles.find('s:fills', NS) or [])
         fonts = styles.find('s:fonts', NS)
         formats = {int(n.get('numFmtId')): n.get('formatCode', '') for n in styles.findall('s:numFmts/s:numFmt', NS)}
         xfs = list(styles.find('s:cellXfs', NS))
@@ -38,7 +59,7 @@ def read_workbook(data: bytes, hyperlinks: dict | None = None) -> dict[str, dict
                     link.get('ref'): link.get('location', '')
                     for link in document.findall('s:hyperlinks/s:hyperlink', NS)
                 }
-            cells = {}
+            cells = SheetCells()
             for cell in document.findall('s:sheetData/s:row/s:c', NS):
                 value = cell.findtext('s:v', '', NS)
                 kind = cell.get('t')
@@ -58,6 +79,9 @@ def read_workbook(data: bytes, hyperlinks: dict | None = None) -> dict[str, dict
                     col = 0
                     for char in letters:
                         col = col * 26 + ord(char) - 64
+                    fill_id = int(style.get('fillId', '0'))
+                    if fill_id < len(fills) and is_grey_fill(fills[fill_id]):
+                        cells.grey_cells.add((int(row), col))
                     font = fonts[int(style.get('fontId', '0'))]
                     cells[(int(row), col)] = (value, font.find('s:i', NS) is not None, font.find('s:b', NS) is not None)
             result[sheet.get('name')] = cells
@@ -120,15 +144,26 @@ def load_topics(workbook_path=None):
     return topics
 
 
+def table_headers(cells):
+    rows = sorted({r for r, c in cells})
+    grey = getattr(cells, 'grey_cells', set())
+    headers = []
+    for row in rows:
+        positions = [pos for pos in cells if pos[0] == row]
+        if len(positions) >= 2 and sum(pos in grey for pos in positions) / len(positions) >= .6:
+            headers.append(row)
+    if not headers:
+        headers = [next((r for r in rows if r >= rows[0] + 2 and
+                        sum(rr == r for rr, c in cells) >= 2), rows[0])]
+    return headers
+
+
 def render_table(name, cells):
     if not cells:
         return '<p>This sheet is empty.</p>'
     rows = sorted({r for r, c in cells})
-    cols = [c for r, c in cells]
-    first_col, last_col = min(cols), max(cols)
-    # The workbook has a title/legend above each table, separated by a blank row.
-    header = next((r for r in rows if r >= rows[0] + 2 and
-                   sum(rr == r for rr, c in cells) >= 2), rows[0])
+    headers = table_headers(cells)
+    first_col = min(c for r, c in cells)
 
     def content(cell):
         value, italic, bold = cell
@@ -139,28 +174,44 @@ def render_table(name, cells):
             value = f'<strong>{value}</strong>'
         return value
 
-    notes = []
-    for (row, col), cell in sorted(cells.items()):
-        if row < header and col != first_col:
-            notes.append(f'<span>{content(cell)}</span>')
-    legend = '<div class="sheet-legend">' + ''.join(notes) + '</div>' if notes else ''
-    headings = ''.join(f'<th scope="col">{content(cells.get((header, col), ("", False, False)))}</th>'
-                       for col in range(first_col, last_col + 1))
-    output = []
-    for row in rows:
-        if row <= header:
-            continue
-        row_cells = {col: cell for (r, col), cell in cells.items() if r == row}
-        if len(row_cells) == 1 and first_col in row_cells:
-            output.append(f'<tr class="sheet-section"><th colspan="{last_col - first_col + 1}" scope="rowgroup">{content(row_cells[first_col])}</th></tr>')
-            continue
-        parts = []
-        for col in range(first_col, last_col + 1):
-            cell = cells.get((row, col), ('', False, False))
-            tag = 'th scope="row"' if col == first_col else 'td'
-            close_tag = 'th' if col == first_col else 'td'
-            parts.append(f'<{tag}>{content(cell)}</{close_tag}>')
-        output.append('<tr>' + ''.join(parts) + '</tr>')
-    return (legend + f'<div class="sheet-table-wrap" role="region" aria-label="{html.escape(name, quote=True)} table" tabindex="0">'
-            f'<table class="sheet-table"><caption>{html.escape(name)}</caption><thead><tr>{headings}</tr></thead>'
-            f'<tbody>{"".join(output)}</tbody></table></div>')
+    notes = [f'<span>{content(cell)}</span>' for (row, col), cell in sorted(cells.items())
+             if row < headers[0] and col != first_col]
+    output = ['<div class="sheet-legend">' + ''.join(notes) + '</div>'] if notes else []
+    for index, header in enumerate(headers):
+        end = headers[index + 1] if index + 1 < len(headers) else rows[-1] + 1
+        # Drop entirely empty spacer columns, retaining every populated cell.
+        columns = sorted({col for row, col in cells if header <= row < end})
+        widths = []
+        for col in columns:
+            heading = cells.get((header, col), ('',))[0]
+            lengths = sorted(len(cell[0]) for (row, c), cell in cells.items()
+                             if header < row < end and c == col and cell[0].strip())
+            typical = lengths[max(0, math.ceil(len(lengths) * .85) - 1)] if lengths else 0
+            # Include padding and uppercase header lettering in the minimum width.
+            heading_width = 3 + max((len(line) for line in heading.splitlines()), default=0) * .62
+            content_width = min(60, 6 + math.sqrt(typical) * 2.5)
+            if heading.strip().casefold() in {'description', 'notes', 'quote', 'verse', 'summary', 'definition', 'answer'} and typical > 80:
+                content_width = max(36, content_width)
+            widths.append(round(max(8, heading_width, content_width), 1))
+        colgroup = '<colgroup>' + ''.join(f'<col style="width:{w}rem">' for w in widths) + '</colgroup>'
+        headings = ''.join(f'<th scope="col">{content(cells.get((header, col), ("", False, False)))}</th>' for col in columns)
+        body = []
+        for row in rows:
+            if not header < row < end:
+                continue
+            row_cells = {col: cell for (r, col), cell in cells.items() if r == row}
+            if len(row_cells) == 1 and columns[0] in row_cells:
+                body.append(f'<tr class="sheet-section"><th colspan="{len(columns)}">{content(row_cells[columns[0]])}</th></tr>')
+                continue
+            parts = []
+            for col in columns:
+                cell = cells.get((row, col), ('', False, False))
+                tag = 'th scope="row"' if col == columns[0] else 'td'
+                close_tag = 'th' if col == columns[0] else 'td'
+                parts.append(f'<{tag}>{content(cell)}</{close_tag}>')
+            body.append('<tr>' + ''.join(parts) + '</tr>')
+        label = f'{name} — {cells.get((header, columns[0]), (name,))[0]}' if len(headers) > 1 else name
+        output.append(f'<div class="sheet-table-wrap" role="region" aria-label="{html.escape(label, quote=True)} table" tabindex="0">'
+                      f'<table class="sheet-table" style="width:{sum(widths):.1f}rem"><caption>{html.escape(label)}</caption>'
+                      f'{colgroup}<thead><tr>{headings}</tr></thead><tbody>{"".join(body)}</tbody></table></div>')
+    return ''.join(output)

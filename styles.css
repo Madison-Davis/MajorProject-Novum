@@ -6,20 +6,19 @@
 .sheet-page .tpl-chapter-header { margin-bottom: 1.75rem; }
 .sheet-page .tpl-chapter-title { font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1.2; }
 .sheet-legend { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; color: #aaa; font-size: .8rem; margin-bottom: 1rem; }
-.sheet-table-wrap { max-width: 100%; max-height: 76vh; overflow: auto; margin-block: 1.5rem; border: 1px solid #ffffff18; border-radius: 16px; background: #101112; box-shadow: 0 16px 48px #0003; scrollbar-color: #555 #141414; }
-.sheet-table { border-collapse: separate; border-spacing: 0; width: 100%; font-size: .875rem; line-height: 1.7; color: #d2d3d5; text-align: left; }
+.sheet-table-wrap { max-width: 100%; max-height: 76vh; overflow: auto; margin-block: 1.5rem; border: 1px solid #ffffff18; border-radius: 16px; background: #111111; box-shadow: 0 16px 48px #0003; scrollbar-color: #555 #141414; }
+.sheet-page .sheet-table { display: table; overflow: visible; border-collapse: separate; border-spacing: 0; min-width: 100%; table-layout: fixed; font-size: .875rem; line-height: 1.7; color: #d3d3d3; text-align: left; }
 .sheet-table caption { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
-.sheet-table th, .sheet-table td { padding: 1.1rem 1.25rem; min-width: 9rem; max-width: 30rem; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; border: 0; border-bottom: 1px solid #ffffff0c; border-right: 1px solid #ffffff08; }
-.sheet-table thead th { position: sticky; top: 0; z-index: 2; background: #242527; color: #f4f2ed; font-size: .72rem; font-weight: 700; letter-spacing: .065em; text-transform: uppercase; border-bottom: 1px solid #c4b28d55; padding-block: 1rem; }
-.sheet-table tbody tr { background: #111214; }
-.sheet-table tbody tr:nth-child(even) { background: #17181a; }
-.sheet-table tbody tr:hover { background: #222326; }
-.sheet-table tbody th[scope="row"] { color: #f0ede5; font-weight: 500; }
+.sheet-table th, .sheet-table td { padding: 1.1rem 1.25rem; vertical-align: top; white-space: pre-wrap; overflow-wrap: anywhere; border: 0; border-bottom: 1px solid #ffffff0c; border-right: 1px solid #ffffff08; }
+.sheet-page .sheet-table thead th { position: sticky; top: 0; z-index: 2; background: #262626; color: #eeeeee; font-size: .72rem; font-weight: 700; letter-spacing: .065em; text-transform: uppercase; white-space: nowrap; overflow-wrap: normal; border-bottom: 1px solid #ffffff12; padding-block: 1rem; }
+.sheet-table tbody tr { background: #111111; }
+.sheet-table tbody tr:hover { background: #353535; }
+.sheet-table tbody th[scope="row"] { color: #eeeeee; font-weight: 500; }
 .sheet-table tbody tr:last-child > * { border-bottom: 0; }
-.sheet-table .sheet-section th { background: #292720; color: #d9c9a6; font-size: .8rem; font-weight: 700; letter-spacing: .04em; padding-block: .8rem; }
-.sheet-table-wrap:focus-visible { outline: 2px solid #c4b28d; outline-offset: 4px; }
+.sheet-table .sheet-section th { background: #1c1c1c; color: #d3d3d3; font-size: .8rem; font-weight: 700; letter-spacing: .04em; padding-block: .8rem; }
+.sheet-table-wrap:focus-visible { outline: 2px solid #999999; outline-offset: 4px; }
 @media (max-width: 700px) {
   .sheet-table-wrap { border-radius: 10px; max-height: 72vh; }
-  .sheet-table th, .sheet-table td { padding: .85rem 1rem; min-width: 8rem; }
+  .sheet-table th, .sheet-table td { padding: .85rem 1rem; }
   .sheet-table { font-size: .82rem; }
 }
