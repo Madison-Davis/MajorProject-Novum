@@ -1,0 +1,1539 @@
+/* Shared stylesheet for Portfolio, Codex (including generated pages), and Cortex.
+   Page markup, scripts, and cortex/globe-explorer.css also supply styles.
+   Keep state selectors: scripts toggle visibility, tabs, and accordions.
+   Sections retain their cascade order; responsive rules follow their components. */
+
+/* ==========================================================================
+   DESIGN TOKENS — shared colors, typography, spacing, and component themes
+   ========================================================================== */
+:root {
+  /* Colors */
+  --color-surface: #0c0c0c;
+  --color-surface-soft: #272727;
+  --color-border: #202020;
+  --color-border-hover: #404040;
+  --color-text: #f3f5f8;
+  --color-text-muted: #a6a6a6;
+  --color-text-dim: #a6a6a6;
+  --color-accent: #dddddd;
+  --color-accent-strong: #ffffff;
+
+  /* Typography */
+  --font-display: "Manrope", sans-serif;
+  --font-body: "Manrope", sans-serif;
+  --font-weight-display: 400;
+  --font-weight-body: 200;
+
+  /* Layout */
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-pill: 999px;
+  --section-space: 9rem;
+
+  /* Motion / Effects */
+  --shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.28);
+  --shadow-elevated: 0 18px 45px rgba(0, 0, 0, 0.45);
+  --transition: 180ms ease;
+
+  /* Button tokens */
+  --btn-border: var(--color-border);
+  --btn-primary-text: #090909;
+  --btn-primary-border: #b9b9b9;
+  --btn-primary-bg-start: #f7f7f7;
+  --btn-primary-bg-end: #cfcfcf;
+  --btn-primary-hover-bg-start: #ffffff;
+  --btn-primary-hover-bg-end: #d9d9d9;
+  --btn-ghost-text: var(--color-text);
+  --btn-ghost-bg-start: rgba(255, 255, 255, 0.06);
+  --btn-ghost-bg-end: rgba(255, 255, 255, 0.02);
+  --btn-ghost-hover-bg-start: rgba(255, 255, 255, 0.1);
+  --btn-ghost-hover-bg-end: rgba(255, 255, 255, 0.03);
+  --btn-sheen: rgba(255, 255, 255, 0.18);
+
+  /* Card tokens */
+  --card-bg-start: #111111;
+  --card-bg-mid: #1a1a1a;
+  --card-bg-end: #202020;
+  --card-border: var(--color-border);
+  --card-border-hover: var(--color-border-hover);
+  --card-hover-shadow: var(--shadow-elevated);
+
+  --overview-card-border: #2f2f2f;
+  --overview-card-bg-start: #171717;
+  --overview-card-bg-mid: #121212;
+  --overview-card-bg-end: #0c0c0c;
+  --overview-card-highlight: rgba(255, 255, 255, 0.07);
+  --overview-card-highlight-fade: rgba(255, 255, 255, 0);
+  --overview-card-sheen: rgba(255, 255, 255, 0.07);
+  --overview-meta-color: #bdbdbd;
+  --overview-line-color: #7a7a7a;
+  --overview-hover-border: #707070;
+  --overview-hover-shadow: 0 26px 54px rgba(0, 0, 0, 0.5);
+
+  --highlight-card-bg-start: #111111;
+  --highlight-card-bg-mid: #171717;
+  --highlight-card-bg-end: #1f1f1f;
+  --highlight-hover-border: #707070;
+
+  /* Accordion tokens */
+  --accordion-border: var(--color-border);
+  --accordion-border-hover: var(--highlight-hover-border);
+  --accordion-bg-start: var(--highlight-card-bg-start);
+  --accordion-bg-mid: var(--highlight-card-bg-mid);
+  --accordion-bg-end: var(--highlight-card-bg-end);
+  --accordion-highlight: rgba(255, 255, 255, 0.06);
+  --accordion-highlight-fade: rgba(255, 255, 255, 0);
+  --accordion-trigger-text: var(--color-accent-strong);
+  --accordion-trigger-icon: var(--color-text-dim);
+  --accordion-row-border: var(--color-border);
+  --accordion-header-text: var(--color-text-dim);
+  --accordion-body-text: var(--color-text-muted);
+  --accordion-link-text: var(--color-accent-strong);
+}
+
+/* ==========================================================================
+   BASE — reset, page transitions, and default typography
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+}
+
+html {
+  background: #000;
+}
+
+.page-transitioning {
+  opacity: 0 !important;
+  transition: opacity 300ms ease !important;
+  pointer-events: none !important;
+}
+
+body {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
+  color: var(--color-text);
+  background: black;
+  line-height: 1.6;
+  scroll-padding-top: 96px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-display);
+  margin: 0 0 0.8rem;
+  line-height: 1.15;
+  color: var(--color-accent-strong);
+  text-align: center;
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  letter-spacing: 0.01em;
+}
+
+p {
+  margin: 0;
+  text-align: center;
+}
+
+/* ==========================================================================
+   SHARED LAYOUT — containers, section spacing, and headings
+   ========================================================================== */
+.container {
+  width: 55%;
+  margin: 0 auto;
+}
+
+.section {
+  padding: var(--section-space) 0;
+}
+
+.section-title {
+  font-size: clamp(1.7rem, 3.6vw, 2.5rem);
+}
+
+.section-intro {
+  max-width: 66ch;
+  margin-bottom: 1.8rem;
+  margin-left: auto;
+  margin-right: auto;
+  color: var(--color-text-muted);
+}
+
+/* ==========================================================================
+   SHARED HEADER — sticky header, brand, and navigation pills
+   ========================================================================== */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+  background: rgba(10, 10, 10, 0.76);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 72px;
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.nav-pill {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 5px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-pill-link {
+  padding: 0.38rem 1rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  text-decoration: none;
+  white-space: nowrap;
+  border-radius: var(--radius-pill);
+  transition: color 200ms ease, background 200ms ease;
+}
+
+.nav-pill-link:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+/* ==========================================================================
+   SHARED HERO — introductory copy and action layout
+   ========================================================================== */
+.hero {
+  padding-top: 12rem;
+  padding-bottom: 10rem;
+  min-height: 100vh;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+
+.hero-copy {
+  padding-top: 0.8rem;
+  max-width: 64ch;
+}
+
+.kicker {
+  margin-bottom: 0.45rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  text-align: center;
+}
+
+.lead {
+  max-width: 54ch;
+  color: var(--color-text-muted);
+  font-size: 1.05rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   SHARED BUTTONS — primary / ghost variants and hover sheen
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.74rem 1.28rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--btn-border);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), background var(--transition), border-color var(--transition), color var(--transition), box-shadow var(--transition);
+}
+
+.btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 35%, var(--btn-sheen), transparent 65%);
+  transform: translateX(-130%);
+  transition: transform 420ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+}
+
+.btn:hover::after {
+  transform: translateX(120%);
+}
+
+.btn.primary {
+  background: linear-gradient(165deg, var(--btn-primary-bg-start), var(--btn-primary-bg-end));
+  color: var(--btn-primary-text);
+  border-color: var(--btn-primary-border);
+}
+
+.btn.primary:hover {
+  background: linear-gradient(165deg, var(--btn-primary-hover-bg-start), var(--btn-primary-hover-bg-end));
+  border-color: var(--color-border-hover);
+}
+
+.btn.ghost {
+  background: linear-gradient(180deg, var(--btn-ghost-bg-start), var(--btn-ghost-bg-end));
+  color: var(--btn-ghost-text);
+}
+
+.btn.ghost:hover {
+  border-color: var(--color-border-hover);
+  background: linear-gradient(180deg, var(--btn-ghost-hover-bg-start), var(--btn-ghost-hover-bg-end));
+}
+
+/* ==========================================================================
+   SHARED OVERVIEW CARDS — grids, content, and hover effects
+   ========================================================================== */
+.card-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.card-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  font-size: 0.85rem;
+}
+
+.card {
+  border: 1px solid var(--card-border);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.1rem;
+  box-shadow: var(--shadow-soft);
+  text-align: center;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.card p {
+  color: var(--color-text-muted);
+}
+
+#overview .card-grid.three {
+  gap: 1.25rem;
+  overflow: visible;
+}
+
+/* Overview cards */
+.overview-card {
+  min-height: 275px;
+  border: 1px solid var(--overview-card-border);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 20% -10%, var(--overview-card-highlight), var(--overview-card-highlight-fade) 44%),
+    linear-gradient(165deg, var(--overview-card-bg-start), var(--overview-card-bg-mid) 58%, var(--overview-card-bg-end));
+  padding: 2.2rem 1.8rem 1.9rem;
+  display: grid;
+  align-content: start;
+  gap: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+}
+
+.overview-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 20%, var(--overview-card-sheen), transparent 80%);
+  opacity: 0;
+  transform: translateX(-40%);
+  transition: opacity 260ms ease, transform 260ms ease;
+  pointer-events: none;
+}
+
+.overview-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.95rem;
+  color: var(--overview-meta-color);
+  font-size: 1.9rem;
+  letter-spacing: 0.08em;
+  text-align: left;
+}
+
+.overview-line {
+  width: 58px;
+  height: 1px;
+  background: var(--overview-line-color);
+}
+
+.overview-card h3 {
+  margin: 0;
+  text-align: left;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.overview-card > p:last-child {
+  text-align: left;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+  max-width: 30ch;
+}
+
+.card:not(.overview-card):hover {
+  transform: scale(1.05);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--card-hover-shadow);
+}
+
+#overview .overview-card:hover {
+  transform: translateY(-6px) scale(1.06);
+  z-index: 3;
+  border-color: var(--overview-hover-border);
+  box-shadow: var(--overview-hover-shadow);
+}
+
+#overview .overview-card:hover::before {
+  opacity: 1;
+  transform: translateX(15%);
+}
+
+/* ==========================================================================
+   PORTFOLIO PROJECTS — category tabs, accordion states, and tables
+   ========================================================================== */
+#projects {
+  padding-top: 3rem;
+}
+
+.project-accordion {
+  margin-top: 2.2rem;
+  display: grid;
+  gap: 0.75rem;
+  max-height: 5000px;
+  overflow: hidden;
+  transition: max-height 420ms ease, margin-top 300ms ease;
+}
+
+.project-accordion:not(.is-collapsed) {
+  overflow: visible;
+}
+
+#projects .project-accordion.is-collapsed {
+  max-height: 0;
+  margin-top: 0;
+  pointer-events: none;
+}
+
+/* Category buttons and their active / hover states. */
+.project-group-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0.25rem 0 1rem;
+}
+
+.project-group-btn {
+  width: 100%;
+  border: 1px solid var(--card-border);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  color: var(--color-text);
+  border-radius: var(--radius-lg);
+  padding: 0.95rem 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.project-group-btn:hover {
+  border-color: var(--highlight-hover-border);
+  background: linear-gradient(165deg, var(--card-bg-mid), var(--card-bg-end) 52%, var(--color-surface-soft));
+  transform: scale(1.06);
+  box-shadow: var(--shadow-elevated);
+}
+
+.project-group-btn.is-active {
+  border-color: var(--card-border-hover);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  color: var(--color-text);
+  box-shadow: var(--card-hover-shadow);
+}
+
+#projects .accordion-trigger {
+  display: none;
+}
+
+#projects .accordion-panel-inner {
+  padding-top: 1rem;
+}
+
+/* Project panels; JavaScript sets panel heights and is-open / is-collapsed. */
+.accordion-item {
+  margin-top: 20px;
+  border: 1px solid var(--accordion-border);
+  border-radius: var(--radius-md);
+  background:
+    radial-gradient(circle at 12% -18%, var(--accordion-highlight), var(--accordion-highlight-fade) 45%),
+    linear-gradient(165deg, var(--accordion-bg-start), var(--accordion-bg-mid) 58%, var(--accordion-bg-end));
+  overflow: hidden;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.accordion-item:not(.is-open):hover {
+  transform: scale(1.03);
+  border-color: var(--accordion-border-hover);
+  background:
+    radial-gradient(circle at 12% -18%, var(--accordion-highlight), var(--accordion-highlight-fade) 45%),
+    linear-gradient(165deg, var(--accordion-bg-mid), var(--accordion-bg-end) 52%, var(--color-surface-soft));
+  box-shadow: var(--shadow-elevated);
+}
+
+.accordion-item.is-open:hover {
+  border-color: var(--accordion-border-hover);
+  box-shadow: var(--shadow-elevated);
+}
+
+.accordion-trigger {
+  width: 100%;
+  cursor: pointer;
+  position: relative;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-weight: 700;
+  padding: 0.95rem 2.35rem;
+  color: var(--accordion-trigger-text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+.accordion-trigger::after {
+  content: "+";
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--accordion-trigger-icon);
+}
+
+.accordion-item.is-open .accordion-trigger::after {
+  content: "-";
+}
+
+.accordion-panel {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 420ms ease, opacity 320ms ease;
+}
+
+.accordion-item.is-open .accordion-panel {
+  opacity: 1;
+}
+
+.accordion-panel-inner {
+  padding: 0 1rem 1rem;
+}
+
+.accordion-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.accordion-table th,
+.accordion-table td {
+  border-top: 1px solid var(--accordion-row-border);
+  padding: 0.65rem 0.4rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.accordion-table th {
+  color: var(--accordion-header-text);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.accordion-table td {
+  color: var(--accordion-body-text);
+}
+
+.accordion-table td a {
+  color: var(--accordion-link-text);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   PORTFOLIO CONTACT — angled links and background video
+   ========================================================================== */
+.feature-split-layout {
+  display: grid;
+  grid-template-columns: 36% 64%;
+  gap: 0;
+  align-items: stretch;
+  min-height: 640px;
+}
+
+.feature-split-left {
+  display: flex;
+  align-items: center;
+  padding-left: 20vw;
+  padding-right: 0;
+  position: relative;
+  z-index: 2;
+  overflow: visible;
+}
+
+/* Perspective stack and per-link horizontal offsets. */
+.angled-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  width: 100%;
+  min-width: 320px;
+  transform: perspective(700px) rotateX(22deg) rotateY(20deg);
+  transform-style: preserve-3d;
+}
+
+.angled-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.88rem 0.88rem 0.88rem 1.5rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--card-border);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  color: var(--color-text);
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  will-change: transform;
+  --btn-x: 0px;
+  transform: rotateZ(-8deg) translateX(var(--btn-x));
+  transition: transform 300ms ease, border-color 300ms ease, background 300ms ease, box-shadow 300ms ease;
+}
+
+.angled-btn:nth-child(1) { --btn-x: -40px; }
+.angled-btn:nth-child(2) { --btn-x: -20px; }
+.angled-btn:nth-child(3) { --btn-x:   0px; }
+.angled-btn:nth-child(4) { --btn-x:  20px; }
+.angled-btn:nth-child(5) { --btn-x:  40px; }
+
+.angled-btn:hover {
+  transform: rotateZ(-8deg) translateX(var(--btn-x)) translateZ(22px) scaleX(1.05);
+  border-color: var(--card-border-hover);
+  background: linear-gradient(165deg, var(--card-bg-mid), var(--card-bg-end) 52%, var(--color-surface-soft));
+  box-shadow: var(--shadow-elevated);
+}
+
+.angled-btn-label {
+  flex: 1;
+}
+
+.angled-btn-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  transition: border-color 300ms ease, background 300ms ease;
+}
+
+.angled-btn:hover .angled-btn-arrow {
+  border-color: var(--color-border-hover);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Video canvas and edge-fade overlay. */
+.feature-split-right {
+  position: relative;
+  z-index: 1;
+}
+
+.feature-split-right::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,0.92) 0%, transparent 15%),
+    linear-gradient(to top, rgba(0,0,0,0.92) 0%, transparent 15%),
+    linear-gradient(to right, transparent 70%, rgba(0,0,0,0.65) 90%, #000 100%);
+}
+
+.feature-split-right video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   SHARED MOTION — scroll visibility controlled by JavaScript
+   ========================================================================== */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   SHARED / PORTFOLIO ADAPTATIONS — tablet, reduced motion, and mobile
+   ========================================================================== */
+/* Tablet layout (up to 980px). */
+@media (max-width: 980px) {
+  .hero-copy {
+    padding-top: 0;
+  }
+
+  .card-grid.three {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .project-group-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feature-split-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-split-left {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .feature-split-right {
+    min-height: 420px;
+  }
+}
+
+/* Respect the system preference for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  html,
+  body {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Mobile layout (up to 700px). */
+@media (max-width: 700px) {
+  :root {
+    --section-space: 6rem;
+  }
+
+  .overview-card {
+    min-height: 0;
+    padding: 1.6rem 1.2rem;
+    border-radius: 20px;
+  }
+
+  .overview-meta {
+    font-size: 1.3rem;
+  }
+
+  .overview-card h3 {
+    font-size: 1.85rem;
+  }
+
+  .overview-card > p:last-child {
+    font-size: 1.02rem;
+  }
+
+  .hero {
+    padding-top: 8rem;
+  }
+
+  .nav-wrap {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 0.85rem 0;
+  }
+
+  .card-grid.three {
+    grid-template-columns: 1fr;
+  }
+
+  .project-group-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .accordion-table {
+    font-size: 0.8rem;
+  }
+
+  .accordion-table th,
+  .accordion-table td {
+    padding: 0.5rem 0.3rem;
+  }
+}
+
+/* ==========================================================================
+   CODEX COURSES — generated cards and category accordion
+   ========================================================================== */
+
+/* Shared keyword chips used by Cortex organization cards. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chip {
+  font-size: 0.68rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+
+.course-subtopic + .course-subtopic {
+  margin-top: 2rem;
+}
+
+.course-subtopic-title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+}
+
+/* Course cards emitted by codex/scripts/build-codex.sh. */
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.course-card {
+  border: 1px solid var(--card-border);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  border-radius: var(--radius-md);
+  padding: 1.3rem 1.1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.course-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--shadow-elevated);
+}
+
+.course-card h3 {
+  margin: 0;
+  text-align: left;
+  font-size: 0.88rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+}
+
+.course-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 0.22rem 0.6rem;
+  text-decoration: none;
+  width: fit-content;
+  margin-top: 0.25rem;
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.course-link:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+/* Codex category accordion: numbered triggers, chevrons, and animated rows. */
+.lab-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lab-accord-item {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.lab-accord-item.is-open {
+  border-color: var(--card-border-hover);
+  box-shadow: var(--card-hover-shadow);
+}
+
+.lab-accord-header {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 2.5rem 1fr 2.5rem;
+  align-items: center;
+  padding: 0.95rem 1.5rem;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  transition: border-color var(--transition), background var(--transition), color var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.lab-accord-header:hover {
+  border-color: var(--highlight-hover-border);
+  background: linear-gradient(165deg, var(--card-bg-mid), var(--card-bg-end) 52%, var(--color-surface-soft));
+  box-shadow: var(--shadow-elevated);
+}
+
+.lab-accord-item.is-open .lab-accord-header {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.lab-accord-num {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-text-dim);
+  text-align: left;
+}
+
+.lab-accord-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.lab-accord-chevron {
+  font-size: 1.1rem;
+  color: var(--color-text-dim);
+  display: inline-block;
+  transition: transform 280ms ease;
+  text-align: right;
+}
+
+.lab-accord-item.is-open .lab-accord-chevron {
+  transform: rotate(90deg);
+}
+
+.lab-accord-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 320ms ease;
+}
+
+.lab-accord-item.is-open .lab-accord-body {
+  grid-template-rows: 1fr;
+}
+
+.lab-accord-inner {
+  overflow: hidden;
+  padding: 0 1.5rem;
+}
+
+.lab-accord-grid {
+  padding: 1.25rem 0 1.75rem;
+}
+
+/* Tablet layout (up to 980px). */
+@media (max-width: 980px) {
+  .course-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   CODEX CHAPTER VIEWER — sidebar navigation and chapter content
+   ========================================================================== */
+.tpl-layout {
+  display: flex;
+  min-height: calc(100vh - 72px);
+  animation: tpl-fadein 400ms ease both;
+}
+
+/* Chapter viewer entrance animation. */
+@keyframes tpl-fadein {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Sticky chapter sidebar; collapses into a wrapping row on mobile. */
+.tpl-toc {
+  width: 220px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+  padding: 2.5rem 1.25rem 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tpl-back-btn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  text-decoration: none;
+  margin-bottom: 1.5rem;
+  transition: color var(--transition);
+}
+
+.tpl-back-btn:hover {
+  color: var(--color-text);
+}
+
+.tpl-toc-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--color-text-dim);
+  opacity: 0.5;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.toc-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dim);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: color var(--transition), background var(--transition);
+}
+
+.toc-link:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toc-link.is-active {
+  color: var(--color-text-dim);
+  background: transparent;
+}
+
+.toc-link.is-active:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toc-num {
+  width: 1rem;
+  text-align: center;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+/* Reading area, chapter headings, and active chapter visibility. */
+.tpl-content {
+  flex: 1;
+  padding: 4rem 10%;
+}
+
+.tpl-content-header {
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.tpl-content-title {
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
+  text-align: center;
+  margin: 0.2rem 0 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.tpl-chapter {
+  display: none;
+  transition: opacity 260ms ease;
+}
+
+.tpl-chapter.is-active {
+  display: block;
+}
+
+.tpl-chapter-header {
+  margin-bottom: 2.2rem;
+}
+
+.tpl-chapter-title {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  text-align: left;
+  margin: 0.3rem 0 0;
+}
+
+.tpl-chapter-subtitle {
+  font-size: clamp(1.4rem, 3vw, 1.6rem);
+  text-align: left;
+  margin: 0.3rem 0 0;
+}
+
+.tpl-chapter-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.tpl-chapter-body p {
+  color: var(--color-text-muted);
+  line-height: 1.75;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.tpl-chapter-body ul,
+.tpl-chapter-body ol {
+  padding-left: 1.6rem;
+  color: var(--color-text-muted);
+  line-height: 1.75;
+}
+
+.tpl-chapter-body li + li {
+  margin-top: 0.45rem;
+}
+
+.tpl-chapter-body pre,
+.tpl-chapter-body .math.block,
+.tpl-chapter-body mjx-container[display="true"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tpl-chapter-body pre {
+  padding: 1rem;
+  background: var(--card-bg-start);
+  border-radius: var(--radius-md);
+}
+
+.tpl-chapter-body table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.tpl-chapter-body th,
+.tpl-chapter-body td {
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+}
+
+/* Mobile layout (up to 700px). */
+@media (max-width: 700px) {
+  .tpl-layout {
+    flex-direction: column;
+  }
+
+  .tpl-toc {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 1rem;
+    gap: 0.35rem;
+  }
+
+  .tpl-toc-label {
+    width: 100%;
+    margin-bottom: 0.25rem;
+  }
+
+  .tpl-content {
+    padding: 2rem 1.25rem;
+  }
+}
+
+/* Mobile layout (up to 700px). */
+@media (max-width: 700px) {
+  .lab-accord-header {
+    padding: 0.9rem 1.1rem;
+    grid-template-columns: 2rem 1fr 2rem;
+  }
+
+  .lab-accord-inner {
+    padding: 0 1.1rem;
+  }
+
+  .course-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   CORTEX — project statistics, organizations, and newsletter cards
+   ========================================================================== */
+
+/* Stats row above the map */
+.cortex-stats {
+  display: flex;
+  justify-content: center;
+  gap: 3.5rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.cortex-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.cortex-stat-num {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  line-height: 1;
+}
+
+.cortex-stat-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+/* Conservation organization grid and cards (including the hidden section). */
+.org-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.org-card {
+  border: 1px solid var(--card-border);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.25rem;
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.org-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--shadow-elevated);
+}
+
+.org-card-region {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.org-card h3 {
+  margin: 0;
+  text-align: left;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+}
+
+.org-card p {
+  text-align: left;
+  font-size: 0.83rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+/* Newsletter recommendations; product-* names match the existing markup. */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.product-card {
+  border: 1px solid var(--card-border);
+  background: linear-gradient(165deg, var(--card-bg-start), var(--card-bg-mid) 52%, var(--card-bg-end));
+  border-radius: var(--radius-lg);
+  padding: 1.3rem 1.1rem;
+  display: grid;
+  align-content: start;
+  gap: 0.65rem;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+.product-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--card-border-hover);
+  box-shadow: var(--shadow-elevated);
+}
+
+.product-category {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.product-card h3 {
+  margin: 0;
+  text-align: left;
+  font-size: 0.86rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-accent-strong);
+}
+
+.product-card p {
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.product-buy-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: 0.22rem 0.65rem;
+  text-decoration: none;
+  width: fit-content;
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.product-buy-link:hover {
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+/* Tablet layout (up to 980px). */
+@media (max-width: 980px) {
+  .org-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cortex-stats {
+    gap: 2rem;
+  }
+}
+
+/* Mobile layout (up to 700px). */
+@media (max-width: 700px) {
+  .org-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cortex-stats {
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .cortex-stat-num {
+    font-size: 1.5rem;
+  }
+}
+
+/* ==========================================================================
+   PORTFOLIO SECTION SPACING — page-specific overrides
+   ========================================================================== */
+
+/* Portfolio: a default 250px gap between complete sections. Preserve the
+   hero's internal spacing and the showcase's own viewport-sized canvas. */
+.portfolio-page main {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 100px;
+}
+
+.portfolio-page main > section {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.portfolio-page main > section:not(#home) {
+  padding: 0;
+}
+
+.portfolio-page main > section ~ section {
+  margin-top: 250px;
+}
+
+.portfolio-page main > section .section-title {
+  margin-top: 0;
+}
+
+/* The portfolio project tabs belong directly beneath the iPhone showcase. */
+.portfolio-page main > #iphone-showcase + script + #projects {
+  margin-top: 0;
+}
+
+/* Add 50px of breathing room between projects and Let's Connect. */
+.portfolio-page main > #feature-split {
+  margin-top: 300px;
+}
+
+/* Chapter and subsection accordion controls. */
+.toc-chevron { margin-left: auto; transition: transform var(--transition); }
+.toc-link[aria-expanded="true"] .toc-chevron { transform: rotate(90deg); }
+.toc-subsections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  /* Line centers on the 1rem number; labels share the chapter text start. */
+  margin: 0 0 0 1.25rem;
+  padding-left: calc(1.15rem - 1px);
+  border-left: 1px solid var(--color-border);
+}
+.toc-subsections[hidden] { display: none; }
+.toc-section-link {
+  appearance: none;
+  padding: 0.5rem 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.toc-section-link:hover, .toc-section-link.is-active {
+  color: var(--color-text);
+  background: transparent;
+}
+.tpl-section { border-bottom: 1px solid var(--color-border); padding-bottom: 1rem; }
+.tpl-section { box-sizing: border-box; }
+.tpl-section summary { cursor: pointer; list-style: none; }
+.tpl-section summary::-webkit-details-marker { display: none; }
+.tpl-section summary::marker { content: ''; }
+.tpl-section summary:focus-visible, .toc-section-link:focus-visible {
+  outline: 1px solid var(--color-text-muted);
+  outline-offset: 3px;
+}
+.tpl-section summary h3 { display: inline; }
+.tpl-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+

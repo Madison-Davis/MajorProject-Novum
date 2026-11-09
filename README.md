@@ -1,58 +1,67 @@
-# Compaulo Content Pipeline
+# Novum
 
-This document describes how content flows from the Obsidian vault in `compaulo-codex` to the live site served out of `MajorProject-Novum`.
+## How to push new content to website
 
-## Repositories involved
+- Edit notes in the local `compaulo-codex` Obsidian vault.
+    - Put Novum notes under `Personal/Personal - Christian/Christian - Novum/Novum - <Category>/`.
+    - The builder imports Markdown notes from those category folders, including subfolders.
+- Push vault changes to `Madison-Davis/MajorProject-Compaulo-Codex` on `main`.
+- Novum (its website and content from the vault) gets updated:
+    - Every Monday at 8 a.m. Pacific.
+    - When you manually run Novum’s workflow.
+    - When you push a change to Novum (`Madison-Davis/MajorProject-Novum` on `main`)
 
-| Repo | Visibility | Role |
-|---|---|---|
-| `compaulo-codex` | — | Obsidian vault (`.obsidian/`) — source of notes/content |
-| `MajorProject-Novum` | **Private** | Produces the site |
-| `MajorProject-Compaulo-Codex` | Private | A sync of the Obsidian Vault hoisted onto GitHub |
+## GitHub secrets
 
-## How to Add More Pages
+- Add secrets under **Novum repository → Settings → Secrets and variables → Actions**.
+- `CODEX_TOKEN`: a GitHub token with read access to the private `MajorProject-Compaulo-Codex` repository.
+- `GOOGLE_SERVICE_ACCOUNT_JSON`: the complete Google service account JSON key described below.
+- A vault workflow that sends `codex-updated` needs its own token with permission to dispatch to Novum; the existing convention is `NOVUM_TOKEN` in the vault repository.
 
-1. Step 1: Notes are edited in the `compaulo-codex` Obsidian vault. All notes must follow the format Compaulo - Title.md and be located within Learn - Compaulo.
-2. Step 2: Open the `MajorProject-Compaulo-Codex` repo.  It'll show the changes you made in Obsidian.
-2. Step 3: Push the `MajorProject-Compaulo-Codex` repo to main.
-3. Step 4: `MajorProject-Compaulo` will be notified of this change and update its pages.
+## How we set up private Google Cloud
 
-## Repository Settings
+- [Console for Cloud Project](https://console.cloud.google.com/welcome?_gl=1*nlvxro*_up*MQ..*_gs*MQ..&gclid=CjwKCAiA2MDXBhBUEiwAD-YB-7WbYsVfF3bRbPoPK90gxNW_9b05CVxouY8zGoCqP236uGSYK0E3rxoCf6MQAvD_BwE&gclsrc=aw.ds&project=novum-514203)
+    - Google Cloud project: `novum-514203`.
+- This downloads our spreadsheet to update content on the page.
+    - Keep the [Novum spreadsheet](https://docs.google.com/spreadsheets/d/1lw2LpiM2jEvmdq0Gztmu4ftWzAi2UwILexoBLGTPfcA/edit) set to **Share → General access → Restricted**.
+    - Share that spreadsheet with the cloud project's service account email as **Viewer**.
+- How this was set up:
+    - Enable **Google Drive API** in that project.
+    - Service account: `novum-reader@novum-514203.iam.gserviceaccount.com`.
+    - Keep the [Novum spreadsheet](https://docs.google.com/spreadsheets/d/1lw2LpiM2jEvmdq0Gztmu4ftWzAi2UwILexoBLGTPfcA/edit) set to **Share → General access → Restricted**.
+    - Share that spreadsheet with the service account email as **Viewer**.
+    - Allow that viewer to download the workbook.
+    - The service account does not need a Google Cloud project role to read the shared spreadsheet.
+    - Under **Google Cloud → IAM & Admin → Service Accounts → novum-reader → Keys**, create a JSON key.
+    - Store the entire JSON file in the GitHub Actions secret `GOOGLE_SERVICE_ACCOUNT_JSON`.
+    - Keep the key out of Git and chat. To replace it, create a new key, update the secret, verify a successful build, then delete the old key in Google Cloud.
+    - The workflow authenticates with that key and requests read-only Drive access.
+    - It exports the spreadsheet as Excel into the runner's temporary folder, then builds with `--sheets-workbook`.
+    - The key and original workbook are not included in the published `site/` folder.
+    - If export returns **403**, check the workflow's Google error message, API enablement, spreadsheet sharing, and download permissions.
+    - If Google setup changes, update `.github/workflows/pages.yml` and the GitHub secret as needed.
 
-1. Make a PAT `Novum & Codex`
-1. In `MajorProject-Novum`, add the Actions secret `CODEX_TOKEN` with this PAT.
-2. In `MajorProject-Compaulo-Codex`, add the Actions secret `NOVUM_TOKEN` with this PAT.
+## How content from Google Sheets pages gets put on website
 
-## Google Sheets tables
+- In **Table of Contents**, set **Genre** to an existing Novum category.
+- In a **Sheet** column, link to the tab to import. The cell label becomes the page title.
+    - Prefix an entry with `*` to exclude it (ex: not ready yet, still in draft). Remove `*` to publish it.
+    - Tabs without mappings are omitted. Repeated mappings in one category produce one card.
+- Styling:
+    - Text, line breaks, bold, italic, and formula results are imported.
+    - Grey-filled header rows start separate tables. Empty spacer columns are omitted.
+    - Other colors, merged cells, images, and interactive formulas are not reproduced.
+    - Failed downloads or broken mappings stop deployment and leave the previous website online.
 
-The Pages build also imports the [Novum workbook](https://docs.google.com/spreadsheets/d/1lw2LpiM2jEvmdq0Gztmu4ftWzAi2UwILexoBLGTPfcA/edit). It must remain readable without signing in. No API key is required. Each mapped tab becomes a table page with a card beside the Obsidian notes in its category. Text, line breaks, bold, and italic formatting are retained; grey header fills identify separate tables; other spreadsheet colors, merged cells, images, and interactive formulas are not reproduced (formula results are imported).
+## How to stay up-to-date with Compaulo styling
 
-In **Table of Contents**, use the **Genre** column for an existing Novum category and any **Sheet** column for a link to its tab. The linked tab determines which table is imported; the cell label becomes the card title, so numbered tabs such as `1.1` work. Without a link, the label must match an exact tab name. Multiple unlinked names in one cell can be separated with line breaks. Repeated mappings within a category produce one card. The current spelling `Soteirology` and tab references `Paul's Three Missions` and `Comparative Religion Apolgetics` are supported as aliases. Prefer exact names for new entries.
-
-Prefix a Table of Contents entry with `*` to exclude it from the site (for example, `*Comparative Religion Apolgetics`). Remove the asterisk when it is ready to publish. Other entries in the same cell remain eligible for import.
-
-Tabs without mappings are reported in build logs and omitted from the library. Broken sheet mappings and unknown category names fail the build so misplaced content does not silently disappear. Download failures also stop deployment, preserving the previously deployed site.
-
-Sheets refresh on each site build, including a weekly scheduled build on Mondays at 8:00 a.m. Pacific time (America/Los_Angeles, adjusting for daylight saving time) and manual **Run workflow** runs in GitHub Actions. GitHub schedules may be delayed. Changes appear after these changes are pushed to `main` and the workflow succeeds.
-
-For a local build with live Sheets data:
+- Source: [MajorProject-Compaulo](https://github.com/Madison-Davis/MajorProject-Compaulo).
+- `shared-compaulo.css`: downloaded snapshot of Compaulo's shared Portfolio, Codex, and Cortex styles.
+- `styles.css`: Novum's spreadsheet table styles; keep these when refreshing shared styles.
+- To refresh only the shared CSS, run from this repository:
 
 ```sh
-python3 scripts/build-novum.py /path/to/Christian\ -\ Novum site --google-sheets
+curl -L --fail \
+  https://raw.githubusercontent.com/Madison-Davis/MajorProject-Compaulo/main/styles.css \
+  --output shared-compaulo.css
 ```
-
-For an offline build, download the workbook as Excel and use `--sheets-workbook /path/to/workbook.xlsx` instead. Omitting both flags builds only Obsidian notes.
-
-## Open Novum locally
-
-From this repository, run:
-
-```sh
-python3 scripts/build-local.py
-```
-
-This finds the adjacent `compaulo-codex` vault and downloads the current spreadsheet. Then open the repository's `index.html`, which forwards to the generated `site/index.html`. Rebuild after editing the vault or spreadsheet to refresh local content. For another vault location, pass `--source /path/to/Christian-Novum`. For an offline build, pass `--sheets-workbook /path/to/workbook.xlsx`.
-
-The generated `site/` directory is ignored by Git. The deployed site continues to use the GitHub Actions build.
-
-Grey-filled header rows start new tables within a sheet. Each table sizes its columns from its own content and omits entirely empty spacer columns.

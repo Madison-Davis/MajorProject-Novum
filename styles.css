@@ -1,5 +1,5 @@
-/* Load the same shared stylesheet as compaulo.com/codex. */
-@import url("https://compaulo.com/styles.css");
+/* Shared Compaulo/Cortex styles downloaded from MajorProject-Compaulo. */
+@import url("./shared-compaulo.css");
 
 .sheet-page .tpl-content { min-width: 0; }
 .sheet-page .tpl-content-header { display: none; }

@@ -12,12 +12,15 @@ import sys
 from pathlib import Path
 from urllib.parse import quote
 
+from markdown_it import MarkdownIt
+from mdit_py_plugins.dollarmath import dollarmath_plugin
+
 from sheets import load_topics, render_table
 
 
 def stylesheet_version() -> str:
     stylesheet = Path(__file__).resolve().parents[1] / "styles.css"
-    return hashlib.sha256(stylesheet.read_bytes()).hexdigest()[:12]
+    return hashlib.sha256(stylesheet.read_bytes() + stylesheet.with_name("shared-compaulo.css").read_bytes()).hexdigest()[:12]
 
 
 def slugify(value: str) -> str:
@@ -29,74 +32,69 @@ def strip_frontmatter(raw: str) -> str:
     return raw[match.end() :] if match else raw
 
 
-def clean_line(line: str) -> str:
-    line = line.strip()
-    if line.startswith("**") and line.endswith("**") and len(line) >= 4:
-        return line[2:-2].strip()
-    return line
+def render_math(content, options):
+    opening, closing = (r'\[', r'\]') if options['display_mode'] else (r'\(', r'\)')
+    return opening + html.escape(content) + closing
 
 
-def parse_chapters(body: str) -> list[dict[str, object]]:
-    """Use the Codex heading convention: #### chapters, ##### subsections."""
-    chapters: list[dict[str, object]] = []
-    chapter: dict[str, object] | None = None
-    section: dict[str, object] | None = None
-    pending: list[str] = []
+markdown = MarkdownIt('commonmark', {'html': False, 'breaks': True}).enable('table')
+markdown.use(dollarmath_plugin, renderer=render_math, allow_labels=False)
 
-    def flush() -> None:
-        nonlocal pending
-        text = " ".join(part.strip() for part in pending if part.strip())
-        if text and section is not None:
-            paragraphs = section["paragraphs"]
-            assert isinstance(paragraphs, list)
-            paragraphs.append(text)
-        pending = []
 
-    for original in body.splitlines():
-        line = clean_line(original)
+def strip_editing_separators(body):
+    # Inspect source ranges before cleaning so literal code and math are preserved.
+    protected = set()
+    for token in markdown.parse(body):
+        if token.type in ('fence', 'code_block', 'math_block', 'math_block_label') and token.map:
+            protected.update(range(*token.map))
+    marker = re.compile(r'(?:##\s*<wbr\s*/?>|(?:\.\s*)+|-{2,})', re.IGNORECASE)
+    return '\n'.join(
+        '' if i not in protected and marker.fullmatch(line.strip()) else line
+        for i, line in enumerate(body.splitlines())
+    )
 
-        if line.startswith("##### "):
-            flush()
-            section = {"subtitle": line[6:].strip(), "paragraphs": []}
-            if chapter is not None:
-                sections = chapter["sections"]
-                assert isinstance(sections, list)
-                sections.append(section)
-        elif line.startswith("#### "):
-            flush()
-            section = {"subtitle": None, "paragraphs": []}
-            chapter = {"title": line[5:].strip(), "sections": [section]}
-            chapters.append(chapter)
-        elif (
-            not line
-            or line == "---"
-            or re.fullmatch(r"#{2,3}\s*<wbr\s*/?>", line, re.IGNORECASE)
-        ):
-            flush()
-        elif chapter is not None:
-            pending.append(line)
 
-    flush()
-
-    # Keep useful notes visible when a file has content but no chapter headings.
+def parse_chapters(body, title="Notes"):
+    # Parse before splitting so headings inside code/math blocks stay untouched.
+    tokens = markdown.parse(strip_editing_separators(body))
+    starts = [i for i, token in enumerate(tokens)
+              if token.type == 'heading_open' and token.tag == 'h4' and token.level == 0]
+    chapters = []
+    for number, start in enumerate(starts):
+        end = starts[number + 1] if number + 1 < len(starts) else len(tokens)
+        chapters.append({'title': tokens[start + 1].content, 'tokens': tokens[start + 3:end]})
     if not chapters:
-        paragraphs: list[str] = []
-        pending_lines: list[str] = []
-        for line in body.splitlines():
-            if line.strip(" .\t"):
-                pending_lines.append(line.strip())
-            elif pending_lines:
-                paragraphs.append(" ".join(pending_lines))
-                pending_lines = []
-        if pending_lines:
-            paragraphs.append(" ".join(pending_lines))
-        chapters = [
-            {
-                "title": "Notes",
-                "sections": [{"subtitle": None, "paragraphs": paragraphs}],
-            }
-        ]
+        chapters = [{'title': title, 'tokens': tokens}]
     return chapters
+
+
+def split_sections(tokens):
+    starts = [i for i, token in enumerate(tokens)
+              if token.type == 'heading_open' and token.tag in ('h3', 'h5') and token.level == 0]
+    sections = []
+    if not starts:
+        return [{'title': 'Overview', 'tokens': tokens}]
+    if starts[0]:
+        sections.append({'title': 'Overview', 'tokens': tokens[:starts[0]]})
+    for number, start in enumerate(starts):
+        end = starts[number + 1] if number + 1 < len(starts) else len(tokens)
+        sections.append({'title': tokens[start + 1].content, 'tokens': tokens[start + 3:end]})
+    return sections
+
+
+def render_body(tokens):
+    for token in tokens:
+        if token.type in ('heading_open', 'heading_close') and token.tag == 'h5':
+            token.tag = 'h3'
+            if token.type == 'heading_open':
+                token.attrSet('class', 'tpl-chapter-subtitle')
+        # Unpublished Obsidian references display their label without broken links.
+        for child in token.children or []:
+            if child.type == 'text':
+                child.content = re.sub(r'\[\[([^]\n]+)\]\]',
+                                       lambda m: m.group(1).split('|')[-1], child.content)
+    return markdown.renderer.render(tokens, markdown.options, {})
+
 
 
 def render_page(title: str, chapters: list[dict[str, object]]) -> str:
@@ -106,24 +104,36 @@ def render_page(title: str, chapters: list[dict[str, object]]) -> str:
     for index, chapter in enumerate(chapters, start=1):
         active = " is-active" if index == 1 else ""
         chapter_title = str(chapter["title"])
-        toc.append(
-            f'<button class="toc-link{active}" data-target="ch-{index}" '
-            f'aria-controls="ch-{index}">'
-            f'<span class="toc-num">{index}</span>'
-            f"<span>{html.escape(chapter_title)}</span></button>"
-        )
-
-        sections = chapter["sections"]
-        assert isinstance(sections, list)
+        chapter_id = f'ch-{index}'
+        expanded = str(index == 1).lower()
+        hidden = '' if index == 1 else ' hidden'
+        section_links = []
         body = []
-        for section in sections:
-            assert isinstance(section, dict)
-            subtitle = section["subtitle"]
-            if subtitle:
-                body.append(f'<h3 class="tpl-chapter-subtitle">{html.escape(str(subtitle))}</h3>')
-            paragraphs = section["paragraphs"]
-            assert isinstance(paragraphs, list)
-            body.extend(f"<p>{html.escape(str(paragraph))}</p>" for paragraph in paragraphs)
+        for section_index, section in enumerate(split_sections(chapter.get('tokens', [])), start=1):
+            section_id = f'{chapter_id}-section-{section_index}'
+            opened = index == 1 and section_index == 1
+            section_title = html.escape(section['title'])
+            section_links.append(
+                f'<button class="toc-section-link" data-section="{section_id}" '
+                f'aria-controls="{section_id}" aria-expanded="{str(opened).lower()}">'
+                f'{section_title}</button>'
+            )
+            body.append(
+                f'<details class="tpl-section" id="{section_id}"' + (' open' if opened else '') + '>'
+                f'<summary><h3 class="tpl-chapter-subtitle">{section_title}</h3></summary>'
+                f'<div class="tpl-section-body">{render_body(section["tokens"])}</div></details>'
+            )
+        if 'body_html' in chapter:
+            body = [chapter['body_html']]
+            section_links = []
+        toc.append(
+            f'<button class="toc-link{active}" data-target="{chapter_id}" '
+            f'aria-controls="{chapter_id}-subsections" aria-expanded="{expanded}">'
+            f'<span class="toc-num">{index}</span><span>{html.escape(chapter_title)}</span>'
+            f'<span class="toc-chevron" aria-hidden="true">›</span></button>'
+            f'<div class="toc-subsections" id="{chapter_id}-subsections"{hidden}>'
+            + ''.join(section_links) + '</div>'
+        )
 
         rendered_chapters.append(
             f'<div class="tpl-chapter{active}" id="ch-{index}">'
@@ -143,8 +153,15 @@ def render_page(title: str, chapters: list[dict[str, object]]) -> str:
   <title>{title_html} — Novum</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../styles.css?v={stylesheet_version()}">
+  <script>
+    window.MathJax = {{
+      tex: {{ inlineMath: [['\\\\(', '\\\\)']], displayMath: [['\\\\[', '\\\\]']] }},
+      options: {{ skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }}
+    }};
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-chtml.js"></script>
 </head>
 <body>
     <header class="site-header"><div class="container nav-wrap">
@@ -159,24 +176,7 @@ def render_page(title: str, chapters: list[dict[str, object]]) -> str:
             <h1>NOVUM</h1><h3 class="tpl-content-title">{title_html}</h3>
         </div>{"".join(rendered_chapters)}</main>
   </div>
-  <script>
-        const links = document.querySelectorAll('.toc-link');
-        links.forEach((link) => link.addEventListener('click', () => {{
-            const target = document.getElementById(link.dataset.target);
-            const current = document.querySelector('.tpl-chapter.is-active');
-      if (!target || current === target) return;
-            links.forEach((item) => item.classList.remove('is-active'));
-            link.classList.add('is-active');
-            current.style.opacity = '0';
-            setTimeout(() => {{
-                current.classList.remove('is-active');
-                current.style.opacity = '';
-                target.style.opacity = '0';
-                target.classList.add('is-active');
-                requestAnimationFrame(() => requestAnimationFrame(() => {{ target.style.opacity = '1'; }}));
-            }}, 260);
-    }}));
-  </script>
+  <script src="../../chapter-viewer.js?v={stylesheet_version()}"></script>
 </body>
 </html>
 '''
@@ -191,7 +191,10 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
     if output_root.exists():
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True)
-    shutil.copy2(Path(__file__).resolve().parents[1] / "styles.css", output_root / "styles.css")
+    assets = Path(__file__).resolve().parents[1]
+    for name in ('styles.css', 'shared-compaulo.css'):
+        shutil.copy2(assets / name, output_root / name)
+    shutil.copy2(assets / 'scripts' / 'chapter-viewer.js', output_root / 'chapter-viewer.js')
 
     categories = sorted(
         (path for path in source_root.iterdir() if path.is_dir() and path.name.startswith("Novum - ")),
@@ -220,7 +223,7 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
             output_path = output_root / "pages" / category_slug / f"{note_slug}.html"
             output_path.parent.mkdir(parents=True, exist_ok=True)
 
-            chapters = parse_chapters(strip_frontmatter(note_path.read_text(encoding="utf-8")))
+            chapters = parse_chapters(strip_frontmatter(note_path.read_text(encoding="utf-8")), card_title)
             output_path.write_text(render_page(stem.upper(), chapters), encoding="utf-8")
 
             href = quote(f"pages/{category_slug}/{note_slug}.html", safe="/-")
@@ -234,8 +237,7 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
             sheet_slug = "sheet-" + slugify(sheet_name)
             output_path = output_root / "pages" / category_slug / f"{sheet_slug}.html"
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            page = render_page(sheet_name, [{"title": sheet_name, "sections": []}])
-            page = page.replace('<p>This chapter is empty.</p>', render_table(sheet_name, cells))
+            page = render_page(sheet_name, [{"title": sheet_name, "body_html": render_table(sheet_name, cells)}])
             page = page.replace('>CHAPTERS</p>', '>CONTENTS</p>').replace('CHAPTER 1</p>', 'REFERENCE</p>')
             page = page.replace('<body>', '<body class="sheet-page">')
             output_path.write_text(page, encoding="utf-8")
@@ -268,7 +270,7 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
   <title>Novum — Christian Studies</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v={stylesheet_version()}">
 </head>
 <body>
