@@ -29,6 +29,8 @@ The Pages build also imports the [Novum workbook](https://docs.google.com/spread
 
 In **Table of Contents**, use the **Genre** column for an existing Novum category and any **Sheet** column for a link to its tab. The linked tab determines which table is imported; the cell label becomes the card title, so numbered tabs such as `1.1` work. Without a link, the label must match an exact tab name. Multiple unlinked names in one cell can be separated with line breaks. Repeated mappings within a category produce one card. The current spelling `Soteirology` and tab references `Paul's Three Missions` and `Comparative Religion Apolgetics` are supported as aliases. Prefer exact names for new entries.
 
+Prefix a Table of Contents entry with `*` to exclude it from the site (for example, `*Comparative Religion Apolgetics`). Remove the asterisk when it is ready to publish. Other entries in the same cell remain eligible for import.
+
 Tabs without mappings are reported in build logs and omitted from the library. Broken sheet mappings and unknown category names fail the build so misplaced content does not silently disappear. Download failures also stop deployment, preserving the previously deployed site.
 
 Sheets refresh on each site build, including a scheduled build every six hours and manual **Run workflow** runs in GitHub Actions. GitHub schedules may be delayed. Changes appear after these changes are pushed to `main` and the workflow succeeds.

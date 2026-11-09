@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 
 class SheetLinksTest(unittest.TestCase):
-    def workbook(self, target="'1.1'!A1"):
+    def workbook(self, target="'1.1'!A1", label="Readable title"):
         namespace = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
         def worksheet(content):
             return f'<worksheet xmlns="{namespace}">{content}</worksheet>'
@@ -20,7 +20,7 @@ class SheetLinksTest(unittest.TestCase):
             archive.writestr('xl/workbook.xml', f'<workbook xmlns="{namespace}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Table of Contents" r:id="a"/><sheet name="1.1" r:id="b"/></sheets></workbook>')
             archive.writestr('xl/_rels/workbook.xml.rels', '<Relationships><Relationship Id="a" Target="worksheets/sheet1.xml"/><Relationship Id="b" Target="worksheets/sheet2.xml"/></Relationships>')
             archive.writestr('xl/styles.xml', f'<styleSheet xmlns="{namespace}"><fonts><font/></fonts><cellXfs><xf/></cellXfs></styleSheet>')
-            archive.writestr('xl/worksheets/sheet1.xml', worksheet('<sheetData><row>' + cell('C6', 'Genre') + cell('E6', 'Sheet') + '</row><row>' + cell('C7', 'Apologetics') + cell('E7', 'Readable title') + f'</row></sheetData><hyperlinks><hyperlink ref="E7" location="{target}"/></hyperlinks>'))
+            archive.writestr('xl/worksheets/sheet1.xml', worksheet('<sheetData><row>' + cell('C6', 'Genre') + cell('E6', 'Sheet') + '</row><row>' + cell('C7', 'Apologetics') + cell('E7', label) + f'</row></sheetData><hyperlinks><hyperlink ref="E7" location="{target}"/></hyperlinks>'))
             archive.writestr('xl/worksheets/sheet2.xml', worksheet('<sheetData><row>' + cell('B6', 'Table content') + '</row></sheetData>'))
         return data.getvalue()
 
@@ -39,6 +39,15 @@ class SheetLinksTest(unittest.TestCase):
     def test_broken_mapping_fails_instead_of_silently_omitting_button(self):
         with self.assertRaisesRegex(ValueError, 'Unknown sheet.*E7'):
             self.load(self.workbook("'missing'!A1"))
+
+    def test_starred_link_is_excluded(self):
+        data = self.workbook(label='*Comparative Religion Apolgetics')
+        self.assertEqual(self.load(data), {})
+
+    def test_starred_line_preserves_other_entries_in_cell(self):
+        data = self.workbook('', label='*Comparative Religion Apolgetics\n1.1')
+        topics = self.load(data)
+        self.assertEqual([title for title, cells in topics['Apologetics']], ['1.1'])
 
 
 class TableLayoutTest(unittest.TestCase):

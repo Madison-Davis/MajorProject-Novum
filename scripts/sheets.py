@@ -131,6 +131,13 @@ def load_topics(workbook_path=None):
                 label = label.strip()
                 if not label:
                     continue
+                # A leading asterisk keeps draft entries out of the site.
+                if label.startswith('*'):
+                    draft_label = label.lstrip('*').strip()
+                    draft_name = names.get((target or ALIASES.get(draft_label.casefold(), draft_label)).casefold())
+                    if draft_name:
+                        used.add(draft_name)
+                    continue
                 name = names.get((target or ALIASES.get(label.casefold(), label)).casefold())
                 if name is None or name == toc_name:
                     raise ValueError(f'Unknown sheet in Table of Contents at {column}{row}: {target or label}')
