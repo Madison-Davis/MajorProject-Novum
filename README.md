@@ -7,9 +7,10 @@
     - The builder imports Markdown notes from those category folders, including subfolders.
 - Push vault changes to `Madison-Davis/MajorProject-Compaulo-Codex` on `main`.
 - Novum (its website and content from the vault) gets updated:
-    - Every Monday at 8 a.m. Pacific.
-    - When you manually run Novum’s workflow.
-    - When you push a change to Novum (`Madison-Davis/MajorProject-Novum` on `main`)
+    - When you push to `Madison-Davis/MajorProject-Compaulo-Codex` (for the Obsidian notes)
+    - Every Monday at 8 a.m. Pacific. (for the spreadsheet notes)
+    - When you push to `Madison-Davis/MajorProject-Novum`
+    - Note: compaulo works identically except you don't need the automated every Monday release because all of its notes come from Obsidian and not spreadsheets. So both get automatically updated whenever you push changes to the content repo or the website repo.
 
 ## GitHub secrets
 
