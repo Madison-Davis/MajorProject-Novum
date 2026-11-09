@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 8 * * *"
+    - cron: "0 8 * * 1"
+      timezone: "America/Los_Angeles"
   workflow_dispatch:
   repository_dispatch:
     types: [codex-updated]
@@ -64,7 +65,17 @@ jobs:
               },
               timeout=60,
           )
-          response.raise_for_status()
+          if not response.ok:
+              try:
+                  error = response.json().get("error", {})
+              except ValueError:
+                  error = {}
+              reasons = [item.get("reason", "unknown") for item in error.get("errors", [])]
+              raise SystemExit(
+                  f"Google Drive export failed (HTTP {response.status_code}; "
+                  f"reasons: {', '.join(reasons) or 'unspecified'}): "
+                  f"{error.get('message', 'No JSON error details returned')}"
+              )
           destination = Path(os.environ["RUNNER_TEMP"]) / "novum.xlsx"
           destination.write_bytes(response.content)
           PY

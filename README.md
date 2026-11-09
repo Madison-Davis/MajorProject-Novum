@@ -33,7 +33,7 @@ Prefix a Table of Contents entry with `*` to exclude it from the site (for examp
 
 Tabs without mappings are reported in build logs and omitted from the library. Broken sheet mappings and unknown category names fail the build so misplaced content does not silently disappear. Download failures also stop deployment, preserving the previously deployed site.
 
-Sheets refresh on each site build, including a daily scheduled build at 08:17 UTC and manual **Run workflow** runs in GitHub Actions. GitHub schedules may be delayed. Changes appear after these changes are pushed to `main` and the workflow succeeds.
+Sheets refresh on each site build, including a weekly scheduled build on Mondays at 8:00 a.m. Pacific time (America/Los_Angeles, adjusting for daylight saving time) and manual **Run workflow** runs in GitHub Actions. GitHub schedules may be delayed. Changes appear after these changes are pushed to `main` and the workflow succeeds.
 
 For a local build with live Sheets data:
 
