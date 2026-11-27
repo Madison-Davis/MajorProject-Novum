@@ -208,3 +208,197 @@ var NOVUM_BOOK_DISCOVERIES = (function () {
 })();
 
 var data = { countries: [], connections: {} };
+
+var NOVUM_PAUL_MISSIONS = (function () {
+  'use strict';
+
+  function place(title, country, lat, lon, approximate) {
+    return { title: title, country: country, lat: lat, lon: lon, approximate: Boolean(approximate) };
+  }
+
+  function stop(site, passage, note) {
+    return { site: site, passage: 'Acts ' + passage, note: note };
+  }
+
+  // Rounded coordinates adapted from OpenBible.info Bible Geocoding (CC BY 4.0).
+  var sites = {
+    antioch: place('Antioch in Syria', 'Turkey', 36.202, 36.162),
+    seleucia: place('Seleucia Pieria', 'Turkey', 36.111, 35.927),
+    salamis: place('Salamis', 'Cyprus', 35.177, 33.908),
+    paphos: place('Paphos', 'Cyprus', 34.754, 32.400),
+    perga: place('Perga', 'Turkey', 37.005, 30.905),
+    pisidianAntioch: place('Antioch in Pisidia', 'Turkey', 38.316, 31.179),
+    iconium: place('Iconium', 'Turkey', 37.884, 32.494),
+    lystra: place('Lystra', 'Turkey', 37.578, 32.453),
+    derbe: place('Derbe', 'Turkey', 37.351, 33.271),
+    attalia: place('Attalia', 'Turkey', 36.881, 30.695),
+    cilicia: place('Cilicia', 'Turkey', 36.918, 34.892, true),
+    galatia: place('Galatia', 'Turkey', 38.407, 32.376, true),
+    phrygia: place('Phrygia', 'Turkey', 38.514, 30.223, true),
+    troas: place('Troas', 'Turkey', 39.507, 26.081),
+    samothrace: place('Samothrace', 'Greece', 40.467, 25.486),
+    neapolis: place('Neapolis', 'Greece', 40.944, 24.418),
+    philippi: place('Philippi', 'Greece', 41.012, 24.286),
+    amphipolis: place('Amphipolis', 'Greece', 40.823, 23.839),
+    apollonia: place('Apollonia', 'Greece', 40.588, 23.353, true),
+    thessalonica: place('Thessalonica', 'Greece', 40.632, 22.932),
+    berea: place('Berea', 'Greece', 40.517, 22.200),
+    athens: place('Athens', 'Greece', 37.983, 23.733),
+    corinth: place('Corinth', 'Greece', 37.906, 22.878),
+    cenchreae: place('Cenchreae', 'Greece', 37.885, 22.993),
+    ephesus: place('Ephesus', 'Turkey', 37.953, 27.368),
+    caesarea: place('Caesarea Maritima', 'Israel', 32.500, 34.892),
+    jerusalem: place('Jerusalem', 'Israel', 31.777, 35.235),
+    macedonia: place('Macedonia', 'Greece', 40.803, 22.666, true),
+    achaia: place('Achaia', 'Greece', 37.906, 22.878, true),
+    assos: place('Assos', 'Turkey', 39.490, 26.336),
+    mitylene: place('Mitylene', 'Greece', 39.100, 26.552),
+    chios: place('Off Chios', 'Greece', 38.390, 26.220, true),
+    samos: place('Samos', 'Greece', 37.715, 26.934),
+    miletus: place('Miletus', 'Turkey', 37.530, 27.278),
+    cos: place('Cos (Kos)', 'Greece', 36.805, 27.090),
+    rhodes: place('Rhodes', 'Greece', 36.442, 28.227),
+    patara: place('Patara', 'Turkey', 36.275, 29.319),
+    tyre: place('Tyre', 'Lebanon', 33.276, 35.193),
+    ptolemais: place('Ptolemais (Acre)', 'Israel', 32.928, 35.082),
+    sidon: place('Sidon', 'Lebanon', 33.563, 35.366),
+    myra: place('Myra', 'Turkey', 36.231, 30.011),
+    cnidus: place('Off Cnidus', 'Turkey', 36.685, 27.340, true),
+    salmone: place('Off Salmone', 'Greece', 35.212, 26.310, true),
+    fairHavens: place('Fair Havens', 'Greece', 34.921, 24.731),
+    cauda: place('Off Cauda (Gavdos)', 'Greece', 34.830, 24.092, true),
+    malta: place('Malta', 'Malta', 35.853, 14.532, true),
+    syracuse: place('Syracuse', 'Italy', 37.068, 15.295),
+    rhegium: place('Rhegium (Reggio Calabria)', 'Italy', 38.112, 15.643),
+    puteoli: place('Puteoli (Pozzuoli)', 'Italy', 40.836, 14.268),
+    forumOfAppius: place('Forum of Appius', 'Italy', 41.469, 12.994),
+    threeTaverns: place('Three Taverns', 'Italy', 41.591, 12.829, true),
+    rome: place('Rome', 'Italy', 41.900, 12.483)
+  };
+
+  var missions = [
+    {
+      label: 'First mission', years: 'c. 47–48 CE', passage: 'Acts 13–14',
+      companions: 'Barnabas and John Mark',
+      stops: [
+        stop('antioch', '13:1–3', 'The Antioch church commissions Barnabas and Saul for their work.'),
+        stop('seleucia', '13:4', 'Barnabas and Saul go down to the port of Seleucia and sail for Cyprus.'),
+        stop('salamis', '13:5', 'They proclaim their message in the synagogues. John Mark assists them.'),
+        stop('paphos', '13:6–12', 'Paul confronts Elymas, who opposes their message. The proconsul Sergius Paulus believes.'),
+        stop('perga', '13:13', 'The group arrives in Pamphylia. John Mark leaves and returns to Jerusalem.'),
+        stop('pisidianAntioch', '13:14–52', 'Paul addresses the synagogue. Interest grows over two Sabbaths, and local opposition eventually drives the missionaries out.'),
+        stop('iconium', '14:1–7', 'Many believe after hearing them in the synagogue. The city divides, and the missionaries leave after learning of a plot against them.'),
+        stop('lystra', '14:8–20', 'Paul heals a man unable to walk. The crowd mistakes Barnabas and Paul for Zeus and Hermes. Later, opponents stone Paul and leave him outside the city.'),
+        stop('derbe', '14:20–21', 'Paul and Barnabas proclaim the message and gain many disciples before turning back.'),
+        stop('lystra', '14:21–23', 'On the way back, they strengthen the disciples and appoint elders in the churches.'),
+        stop('iconium', '14:21–23', 'They return to encourage the disciples and appoint elders.'),
+        stop('pisidianAntioch', '14:21–24', 'They revisit the disciples before traveling through Pisidia into Pamphylia.'),
+        stop('perga', '14:24–25', 'On the return leg, they preach in Perga before going down to Attalia.'),
+        stop('attalia', '14:25–26', 'They depart from this Pamphylian port for Antioch.'),
+        stop('antioch', '14:26–28', 'Back at their sending church, they report what happened on the journey and stay with the disciples.')
+      ]
+    },
+    {
+      label: 'Second mission', years: 'c. 49–52 CE', passage: 'Acts 15:22–18:22',
+      companions: 'Silas and Timothy',
+      stops: [
+        stop('antioch', '15:22–41', 'Judas Barsabbas and Silas bring the Jerusalem council’s letter to Antioch. Barnabas and Mark sail for Cyprus, while Paul sets out with Silas.'),
+        stop('cilicia', '15:40–41', 'Paul and Silas strengthen churches through Syria and Cilicia. Acts gives a regional itinerary here.'),
+        stop('derbe', '16:1–5', 'Paul and Silas revisit Derbe and continue to Lystra.'),
+        stop('lystra', '16:1–5', 'Timothy joins them. Paul has him circumcised because of local concerns, and the party shares the Jerusalem council’s decisions.'),
+        stop('phrygia', '16:6–8', 'The party travels through the Phrygian and Galatian region and passes by Mysia before reaching Troas.'),
+        stop('troas', '16:8–10', 'Paul has a vision of a man from Macedonia asking for help. The group decides to cross the Aegean.'),
+        stop('samothrace', '16:11', 'Acts names the island on the sea crossing from Troas to Macedonia.'),
+        stop('neapolis', '16:11–12', 'The group lands at Neapolis and continues inland to Philippi.'),
+        stop('philippi', '16:12–40', 'Lydia and her household are baptized. Paul and Silas are jailed after Paul confronts a spirit of divination. An earthquake shakes the prison, the jailer believes, and the magistrates release them.'),
+        stop('amphipolis', '17:1', 'The party passes through Amphipolis on the road to Thessalonica.'),
+        stop('apollonia', '17:1', 'Acts names Apollonia as another stop on the road to Thessalonica.'),
+        stop('thessalonica', '17:1–9', 'Paul speaks in the synagogue over three Sabbaths. A crowd attacks Jason’s house, and the city officials require security from Jason and others.'),
+        stop('berea', '17:10–15', 'Listeners examine the Scriptures. After opposition follows from Thessalonica, Paul leaves for Athens while Silas and Timothy remain temporarily.'),
+        stop('athens', '17:16–34', 'Paul speaks at the Areopagus about the God his audience calls unknown. Some dismiss his message, while Dionysius, Damaris, and others believe.'),
+        stop('corinth', '18:1–17', 'Paul meets Priscilla and Aquila and stays for eighteen months. The proconsul Gallio declines to hear a dispute against him.'),
+        stop('cenchreae', '18:18', 'Paul has his hair cut in connection with a vow, then sails with Priscilla and Aquila.'),
+        stop('ephesus', '18:19–21', 'Paul speaks briefly in the synagogue and leaves Priscilla and Aquila in Ephesus.'),
+        stop('caesarea', '18:22', 'Paul lands at Caesarea and goes up to greet the church.'),
+        stop('jerusalem', '18:22', 'Jerusalem is the usual reading of the phrase “went up and greeted the church” in this verse.'),
+        stop('antioch', '18:22', 'Paul returns to Antioch before setting out again.')
+      ]
+    },
+    {
+      label: 'Third mission', years: 'c. 53–58 CE', passage: 'Acts 18:23–21:17',
+      companions: 'Timothy, Erastus, and other companions',
+      stops: [
+        stop('antioch', '18:22–23', 'After spending time in Antioch, Paul sets out on another journey.'),
+        stop('galatia', '18:23', 'Paul travels through Galatia, strengthening disciples. Acts gives a region here without naming individual towns.'),
+        stop('phrygia', '18:23', 'Paul continues through Phrygia to strengthen the churches.'),
+        stop('ephesus', '18:24–19:41', 'Priscilla and Aquila instruct Apollos before Paul arrives. Paul teaches in the hall of Tyrannus for two years. Later the silversmith Demetrius incites a disturbance over the Artemis shrine trade.'),
+        stop('macedonia', '20:1–2', 'Paul leaves Ephesus and encourages believers as he travels through Macedonia.'),
+        stop('achaia', '20:2–3', 'Paul spends three months in Greece. The map uses Corinth as a reference point for Achaia.'),
+        stop('macedonia', '20:3–5', 'Paul changes plans after hearing of a plot and returns through Macedonia. Acts names several companions on this leg.'),
+        stop('philippi', '20:5–6', 'The traveling party leaves Philippi after the festival of Unleavened Bread and reaches Troas five days later.'),
+        stop('troas', '20:6–12', 'The group stays for seven days. Eutychus falls from a window during Paul’s long talk and is brought back alive.'),
+        stop('assos', '20:13–14', 'Paul goes overland to Assos and joins the others aboard their ship.'),
+        stop('mitylene', '20:14', 'The ship takes Paul and his companions to Mitylene on Lesbos.'),
+        stop('chios', '20:15', 'Acts places the party opposite Chios. The pin is an approximate offshore waypoint.'),
+        stop('samos', '20:15', 'The party touches at Samos on the way to Miletus.'),
+        stop('miletus', '20:15–38', 'Hoping to reach Jerusalem by Pentecost, Paul bypasses Ephesus and summons its elders to Miletus for a farewell.'),
+        stop('cos', '21:1', 'The ship sails from Miletus to Cos.'),
+        stop('rhodes', '21:1', 'Rhodes is the next stop after Cos.'),
+        stop('patara', '21:1–2', 'The group changes ships at Patara and takes a vessel bound for Phoenicia.'),
+        stop('tyre', '21:3–6', 'The ship passes Cyprus and unloads at Tyre. The group stays seven days with disciples who warn Paul about going to Jerusalem.'),
+        stop('ptolemais', '21:7', 'They greet the believers at Ptolemais and stay one day.'),
+        stop('caesarea', '21:8–14', 'They stay with Philip the evangelist. Agabus warns that Paul will be bound in Jerusalem.'),
+        stop('jerusalem', '21:15–17', 'Paul and his companions travel inland and are welcomed in Jerusalem.')
+      ]
+    },
+    {
+      label: 'Voyage to Rome', years: 'c. 59–60 CE', passage: 'Acts 27:1–28:16', voyage: true,
+      companions: 'Julius and Aristarchus',
+      description: 'Paul travels under Roman guard after appealing to Caesar. After a shipwreck and a winter on Malta, he reaches Rome.',
+      stops: [
+        stop('caesarea', '27:1–2', 'After appealing to Caesar, Paul leaves Caesarea in the custody of the Roman centurion Julius. Aristarchus travels with him.'),
+        stop('sidon', '27:3', 'Julius allows Paul to visit his friends while the ship stops at Sidon.'),
+        stop('myra', '27:4–6', 'After sailing past Cyprus and along the coast, the party transfers at Myra to an Alexandrian ship bound for Italy.'),
+        stop('cnidus', '27:7', 'The ship reaches the waters off Cnidus after making slow progress against the wind.'),
+        stop('salmone', '27:7–8', 'The ship sails into the shelter of Crete off Salmone and follows the island’s coast.'),
+        stop('fairHavens', '27:8–13', 'Paul warns against sailing farther so late in the season. The crew sets out hoping to winter at Phoenix.'),
+        stop('cauda', '27:14–20', 'A storm drives the ship past Cauda. In the island’s shelter the crew secures the small boat before being driven out to sea.'),
+        stop('malta', '27:39–28:11', 'The ship breaks up near Malta, and everyone reaches shore. The party stays three months before sailing again. Acts names the island without identifying the exact wreck site.'),
+        stop('syracuse', '28:12', 'The party puts in at Syracuse in Sicily and stays three days.'),
+        stop('rhegium', '28:13', 'They reach Rhegium at the southern tip of Italy. A south wind then carries them north.'),
+        stop('puteoli', '28:13–14', 'They land at Puteoli and spend a week with believers before continuing toward Rome.'),
+        stop('forumOfAppius', '28:15', 'Believers from Rome come out along the Appian Way to meet Paul.'),
+        stop('threeTaverns', '28:15', 'Acts names Three Taverns as another meeting point on the approach to Rome.'),
+        stop('rome', '28:16–31', 'Paul arrives under guard. Acts closes with him receiving visitors and teaching for two years from his rented lodging.')
+      ]
+    }
+  ];
+
+  var letters = [
+    { label: 'First mission association', items: [
+      ['Galatians', 'Churches in Galatia, Turkey']
+    ] },
+    { label: 'Second mission association', items: [
+      ['1 Thessalonians', 'Church in Thessalonica, Greece'],
+      ['2 Thessalonians', 'Church in Thessalonica, Greece']
+    ] },
+    { label: 'Third mission association', items: [
+      ['1 Corinthians', 'Church in Corinth, Greece'],
+      ['2 Corinthians', 'Church in Corinth, Greece'],
+      ['Romans', 'Believers in Rome, Italy']
+    ] },
+    { label: 'Imprisonment traditions', items: [
+      ['Ephesians', 'Believers associated with Ephesus, Turkey'],
+      ['Philippians', 'Church in Philippi, Greece'],
+      ['Colossians', 'Church in Colossae, Turkey'],
+      ['Philemon', 'Philemon and his household in Colossae, Turkey']
+    ] },
+    { label: 'Traditionally placed after Acts', items: [
+      ['1 Timothy', 'Timothy in Ephesus, Turkey'],
+      ['Titus', 'Titus in Crete, Greece'],
+      ['2 Timothy', 'Timothy, traditionally associated with Ephesus, Turkey']
+    ] }
+  ];
+
+  return { sites: sites, missions: missions, letters: letters };
+})();

@@ -30,6 +30,11 @@
   var ctrs = { interval: 20000, selected: null, index: 0 };
   var anims = { rotateSpeed: 0.0025, targetSpeed: 0.0025, hoveredMarkerIndex: -1, spinEnabled: true };
   var selectedSite = null;
+  var missionRoutes = [];
+  var missionRouteRadius = cfg.sizes.globe + 2.1;
+  var routeSegments = 36;
+  var routeRadialSegments = 5;
+  var missionPlayback = null;
 
   // ── Shaders ───────────────────────────────────────────────────────────────
   var shaders = { atmosphere: {}, globe: {}, dot: {} };
@@ -154,9 +159,9 @@
     var posArr = [], uvArr = [], sizeArr = [], detailArr = [];
     var goldenAngle = Math.PI * (3 - Math.sqrt(5));
     var radians = Math.PI / 180;
-    // Cover the eastern Mediterranean and taper into the global dots at the edges.
-    var south = 18 * radians, north = 46 * radians;
-    var west = 18 * radians, east = 54 * radians;
+    // Cover the Mediterranean and taper into the global dots at the edges.
+    var south = 16 * radians, north = 57 * radians;
+    var west = -4 * radians, east = 54 * radians;
     var fadeWidth = 3 * radians;
 
     // Sample both resolutions with equal-area Fibonacci spacing and the same land mask.
@@ -263,13 +268,12 @@
 
     // point
     this.point = new THREE.Mesh(sharedGeo, sharedMat);
-    this.point.material.color.set(new THREE.Color(cfg.colors.globeMarkerColor));
     this.group.add(this.point);
     els.markerPoint.push(this.point);
 
     // glow
     this.glow = new THREE.Mesh(sharedGeo, sharedMat.clone());
-    this.glow.material.color.set(new THREE.Color(cfg.colors.globeMarkerGlow));
+    if (!NOVUM_PAUL_MISSIONS.sites[siteId]) this.glow.material.color.set(cfg.colors.globeMarkerGlow);
     this.glow.material.opacity = 0.6;
     this.group.add(this.glow);
     els.markerPoint.push(this.glow);
@@ -301,16 +305,109 @@
   function Markers(sites) {
     var geo     = new THREE.SphereGeometry(2, 15, 15);
     var hitGeo  = new THREE.SphereGeometry(5, 8, 8);
-    var mat     = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.8 });
+    var mat     = new THREE.MeshBasicMaterial({ color: cfg.colors.globeMarkerColor, transparent: true, opacity: 0.8 });
+    var missionMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
 
     grps.markers = new THREE.Group();
     grps.markers.name = 'GlobeMarkers';
 
     Object.keys(sites).forEach(function (id) {
       var site = sites[id];
-      var cords = coordToPos(site.lat, site.lon, cfg.sizes.globe);
-      els.markers.push(new Marker(mat, geo, hitGeo, cords, id));
+      var isMissionSite = Boolean(NOVUM_PAUL_MISSIONS.sites[id]);
+      var radius = isMissionSite ? missionRouteRadius : cfg.sizes.globe;
+      var coords = coordToPos(site.lat, site.lon, radius);
+      els.markers.push(new Marker(isMissionSite ? missionMat : mat, geo, hitGeo, coords, id));
     });
+  }
+
+  function createMissionRoutes() {
+    var material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    var sites = NOVUM_PAUL_MISSIONS.sites;
+    return NOVUM_PAUL_MISSIONS.missions.map(function (mission) {
+      var group = new THREE.Group();
+      group.visible = false;
+      grps.globe.add(group);
+      mission.stops.slice(1).forEach(function (stop, index) {
+        var start = sites[mission.stops[index].site];
+        var end = sites[stop.site];
+        var from = coordToPos(start.lat, start.lon, missionRouteRadius);
+        var to = coordToPos(end.lat, end.lon, missionRouteRadius);
+        var bow = Math.min(from.distanceTo(to) * 0.065, 1.5);
+        var sideways = from.clone().cross(to).normalize();
+        var arc = [];
+        for (var i = 0; i <= 12; i++) {
+          var t = i / 12;
+          arc.push(from.clone().lerp(to, t)
+            .addScaledVector(sideways, bow * Math.sin(Math.PI * t))
+            .setLength(missionRouteRadius));
+        }
+        var curve = new THREE.CatmullRomCurve3(arc);
+        group.add(new THREE.Mesh(new THREE.TubeBufferGeometry(curve, routeSegments, 0.10, routeRadialSegments, false), material));
+      });
+      return group;
+    });
+  }
+
+  function showSites(sites, active) {
+    selectedSite = active;
+    anims.hoveredMarkerIndex = -1;
+    els.markerHits.forEach(function (hit) { hit.group.visible = sites.has(hit.site); });
+  }
+
+  function drawMissionProgress(playback, progress) {
+    playback.progress = progress;
+    missionRoutes[playback.index].children.forEach(function (leg, index) {
+      var segments = Math.ceil(clamp(progress - index, 0, 1) * routeSegments);
+      leg.visible = segments > 0;
+      leg.geometry.setDrawRange(0, segments * routeRadialSegments * 6);
+    });
+
+    var lastStop = Math.floor(progress);
+    if (lastStop === playback.lastStop) return;
+    playback.lastStop = lastStop;
+    var mission = NOVUM_PAUL_MISSIONS.missions[playback.index];
+    var sites = new Set(mission.stops.slice(0, lastStop + 1).map(function (stop) { return stop.site; }));
+    showSites(sites, playback.active);
+  }
+
+  function animateMissionRoute(now) {
+    var playback = missionPlayback;
+    if (!playback || playback.progress === playback.target) return;
+    var t = clamp((now - playback.startedAt) / playback.duration, 0, 1);
+    var ease = t * t * (3 - 2 * t);
+    var progress = t === 1 ? playback.target : playback.from + (playback.target - playback.from) * ease;
+    drawMissionProgress(playback, progress);
+  }
+
+  function showMissionRoute(index, end, active, replay) {
+    if (!missionPlayback || missionPlayback.index !== index) {
+      missionRoutes.forEach(function (route, routeIndex) { route.visible = routeIndex === index; });
+      missionPlayback = index === null ? null : { index: index, target: end, active: active };
+      if (missionPlayback) {
+        if (replay && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          missionPlayback.from = 0;
+          missionPlayback.startedAt = performance.now();
+          missionPlayback.duration = Math.min(2200, 750 + end * 60);
+          drawMissionProgress(missionPlayback, 0);
+        } else {
+          drawMissionProgress(missionPlayback, end);
+        }
+      }
+      return;
+    }
+
+    var playback = missionPlayback;
+    playback.active = active;
+    selectedSite = active;
+    if (end === playback.target) return;
+
+    var now = performance.now();
+    animateMissionRoute(now);
+    playback.from = playback.progress;
+    playback.target = end;
+    playback.startedAt = now;
+    playback.duration = Math.min(420, 220 + 20 * Math.abs(end - playback.from));
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) drawMissionProgress(playback, end);
   }
 
   // ── Dot / Dots ────────────────────────────────────────────────────────────
@@ -429,8 +526,9 @@
     grps.globe.add(grps.points);
 
     if (app.showPoints) {
-      new Markers(NOVUM_BOOK_DISCOVERIES.sites);
+      new Markers(Object.assign({}, NOVUM_BOOK_DISCOVERIES.sites, NOVUM_PAUL_MISSIONS.sites));
       grps.globe.add(grps.markers);
+      missionRoutes = createMissionRoutes();
     }
 
     app.scene.add(grps.main);
@@ -573,8 +671,7 @@
         orbitControls.enableDamping = true;
       }
 
-      function fitDiscoverySites() {
-        var sites = Object.values(NOVUM_BOOK_DISCOVERIES.sites);
+      function fitSites(sites) {
         var latitudes = sites.map(function (site) { return site.lat; });
         var longitudes = sites.map(function (site) { return site.lon; });
         var lat = (Math.min.apply(null, latitudes) + Math.max.apply(null, latitudes)) / 2;
@@ -594,22 +691,26 @@
         moveCamera(direction.multiplyScalar(distance).applyEuler(grps.globe.rotation));
       }
 
+      function fitDiscoverySites() {
+        fitSites(Object.values(NOVUM_BOOK_DISCOVERIES.sites));
+      }
+
       explorer = window.createGlobeExplorer({
         section: globeSection,
         container: container,
         discoveries: NOVUM_BOOK_DISCOVERIES,
-        setDiscoveryView: function (open) {
+        missions: NOVUM_PAUL_MISSIONS,
+        setAtlasView: function (atlas) {
           var points = els.globePoints;
-          points.material.uniforms.fineTerrain.value = open ? 1 : 0;
-          points.geometry.setDrawRange(0, open ? points.geometry.attributes.position.count : globePointCount);
-          if (open && !overviewView) {
+          points.material.uniforms.fineTerrain.value = atlas ? 1 : 0;
+          points.geometry.setDrawRange(0, atlas ? points.geometry.attributes.position.count : globePointCount);
+          if (atlas && !overviewView) {
             overviewView = {
               position: camera.position.clone(),
               rotation: grps.globe.rotation.y,
               spinning: anims.spinEnabled
             };
-            fitDiscoverySites();
-          } else if (!open && overviewView) {
+          } else if (!atlas && overviewView) {
             grps.globe.rotation.y = overviewView.rotation;
             moveCamera(overviewView.position);
             setSpin(overviewView.spinning);
@@ -617,19 +718,24 @@
           }
         },
         fitDiscoverySites: fitDiscoverySites,
-        showSites: function (sites, active) {
-          selectedSite = active;
-          anims.hoveredMarkerIndex = -1;
-          els.markerHits.forEach(function (hit) { hit.group.visible = sites.has(hit.site); });
+        fitMission: function (index) {
+          var missions = NOVUM_PAUL_MISSIONS.missions;
+          var selected = missions[index];
+          var routes = selected.voyage ? [selected] : missions.filter(function (mission) { return !mission.voyage; });
+          var sites = routes.reduce(function (result, mission) {
+            return result.concat(mission.stops.map(function (stop) { return NOVUM_PAUL_MISSIONS.sites[stop.site]; }));
+          }, []);
+          fitSites(sites);
         },
+        showMissionRoute: showMissionRoute,
+        showSites: showSites,
         focusSite: function (siteId) {
           var site = NOVUM_BOOK_DISCOVERIES.sites[siteId];
+          setSpin(false);
           anims.rotateSpeed = 0;
           var distance = camera.position.length();
           moveCamera(coordToPos(site.lat, site.lon, distance).applyEuler(grps.globe.rotation));
-        },
-        isSpinning: function () { return anims.spinEnabled; },
-        setSpin: setSpin
+        }
       });
     }
 
@@ -656,6 +762,7 @@
     }
 
     function loop() {
+      animateMissionRoute(performance.now());
       animate(camera);
       orbitControls.update();
       renderer.render(scene, camera);
