@@ -30,7 +30,8 @@
   var ctrs = { interval: 20000, selected: null, index: 0 };
   var anims = { rotateSpeed: 0.0025, targetSpeed: 0.0025, hoveredMarkerIndex: -1, spinEnabled: true };
   var selectedSite = null;
-  var missionRoutes = [];
+  var journeyAtlases = { paul: NOVUM_PAUL_MISSIONS, jesus: NOVUM_JESUS_JOURNEY };
+  var missionRoutes = {};
   var missionRouteRadius = cfg.sizes.globe + 2.1;
   var routeSegments = 36;
   var routeRadialSegments = 5;
@@ -156,13 +157,26 @@
 
   function Points(includeDiscoveryDetail) {
     var radius = cfg.sizes.globe * (1 + cfg.scale.points);
-    var posArr = [], uvArr = [], sizeArr = [], detailArr = [];
+    var posArr = [], uvArr = [], sizeArr = [], detailArr = [], localArr = [];
     var goldenAngle = Math.PI * (3 - Math.sqrt(5));
     var radians = Math.PI / 180;
     // Cover the Mediterranean and taper into the global dots at the edges.
     var south = 16 * radians, north = 57 * radians;
     var west = -4 * radians, east = 54 * radians;
     var fadeWidth = 3 * radians;
+    var localSouth = 30.5 * radians, localNorth = 34.5 * radians;
+    var localWest = 33.6 * radians, localEast = 36.8 * radians;
+
+    function addPoint(latitude, longitude, size, detail, local) {
+      var edge = Math.min(latitude - localSouth, localNorth - latitude, longitude - localWest, localEast - longitude);
+      var blend = clamp(edge / (0.35 * radians), 0, 1);
+      var position = coordToPos(latitude / radians, longitude / radians, radius);
+      posArr.push(position.x, position.y, position.z);
+      uvArr.push((longitude + Math.PI) / (2 * Math.PI), latitude / Math.PI + 0.5);
+      sizeArr.push(size);
+      detailArr.push(detail);
+      localArr.push(local ? blend : -blend);
+    }
 
     // Sample both resolutions with equal-area Fibonacci spacing and the same land mask.
     function addPoints(total, start, end, fine) {
@@ -173,11 +187,7 @@
         var edgeDistance = Math.min(latitude - south, north - latitude, longitude - west, east - longitude);
         var blend = clamp(edgeDistance / fadeWidth, 0, 1);
         if (fine && blend === 0) continue;
-        var position = coordToPos(latitude / radians, longitude / radians, radius);
-        posArr.push(position.x, position.y, position.z);
-        uvArr.push((longitude + Math.PI) / (2 * Math.PI), latitude / Math.PI + 0.5);
-        sizeArr.push(cfg.sizes.globeDotSize * (fine ? 0.33 : 1));
-        detailArr.push(fine ? blend : -blend);
+        addPoint(latitude, longitude, cfg.sizes.globeDotSize * (fine ? 0.33 : 1), fine ? blend : -blend, false);
       }
     }
 
@@ -190,10 +200,24 @@
     }
 
     var geo = new THREE.BufferGeometry();
+    geo.userData.finePointCount = sizeArr.length;
+    if (includeDiscoveryDetail) {
+      // Add an equal-area patch for the closer views of Galilee and Jerusalem.
+      var localCount = 96000;
+      var sinSouth = Math.sin(localSouth);
+      var sinSpan = Math.sin(localNorth) - sinSouth;
+      var goldenRatioFraction = (Math.sqrt(5) - 1) / 2;
+      for (var j = 0; j < localCount; j++) {
+        var latitude = Math.asin(sinSouth + sinSpan * (j + 0.5) / localCount);
+        var longitude = localWest + (localEast - localWest) * ((j * goldenRatioFraction) % 1);
+        addPoint(latitude, longitude, 0.024, 0, true);
+      }
+    }
     geo.addAttribute('position',    new THREE.BufferAttribute(new Float32Array(posArr),  3));
     geo.addAttribute('landUv',      new THREE.BufferAttribute(new Float32Array(uvArr),   2));
     geo.addAttribute('size',        new THREE.BufferAttribute(new Float32Array(sizeArr), 1));
     geo.addAttribute('detail',      new THREE.BufferAttribute(new Float32Array(detailArr), 1));
+    geo.addAttribute('localDetail', new THREE.BufferAttribute(new Float32Array(localArr), 1));
     geo.setDrawRange(0, globePointCount);
 
     // Screen-facing circles, shaded by their position on the sphere. Keeping
@@ -202,19 +226,32 @@
     landMask.minFilter = THREE.NearestFilter;
     landMask.magFilter = THREE.NearestFilter;
     landMask.generateMipmaps = false;
+    // Natural Earth 1:10m lake polygons provide a finer mask for the Levant.
+    var localLakes = loader.load('globe-assets/maps/levant-lake-mask.png');
+    localLakes.minFilter = THREE.NearestFilter;
+    localLakes.magFilter = THREE.NearestFilter;
+    localLakes.generateMipmaps = false;
     var mat = new THREE.ShaderMaterial({
       uniforms: {
         pixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
         landMask: { value: landMask },
-        fineTerrain: { value: 0 }
+        localLakes: { value: localLakes },
+        lakeBounds: { value: new THREE.Vector4(
+          (localWest + Math.PI) / (2 * Math.PI), localSouth / Math.PI + 0.5,
+          (localEast + Math.PI) / (2 * Math.PI), localNorth / Math.PI + 0.5
+        ) },
+        fineTerrain: { value: 0 },
+        localTerrain: { value: 0 }
       },
       vertexShader: [
         'attribute float size;',
         'attribute float detail;',
+        'attribute float localDetail;',
         'attribute vec2 landUv;',
         'varying vec2 vLandUv;',
         'uniform float pixelRatio;',
         'uniform float fineTerrain;',
+        'uniform float localTerrain;',
         'varying float vLight;',
         'varying float vOpacity;',
         'void main() {',
@@ -227,20 +264,29 @@
         '  vLight = (0.14 + light * 0.46) * smoothstep(0.0, 0.25, facing);',
         '  float blend = smoothstep(0.0, 1.0, abs(detail));',
         '  vOpacity = detail > 0.0 ? blend : 1.0 - blend * fineTerrain;',
+        '  float localBlend = smoothstep(0.0, 1.0, abs(localDetail));',
+        '  vOpacity *= localDetail > 0.0 ? localBlend : 1.0 - localBlend * localTerrain;',
         '  gl_Position = projectionMatrix * mv;',
         '  float dotSize = size * (300.0 / -mv.z);',
         '  if (detail > 0.0) dotSize = min(dotSize, 2.5);',
+        '  if (localDetail > 0.0) dotSize = min(dotSize, 1.2);',
         '  gl_PointSize = max(1.0, dotSize * pixelRatio);',
         '}'
       ].join('\n'),
       fragmentShader: [
         'uniform sampler2D landMask;',
+        'uniform sampler2D localLakes;',
+        'uniform vec4 lakeBounds;',
         'varying vec2 vLandUv;',
         'varying float vLight;',
         'varying float vOpacity;',
         'void main() {',
         '  if (vOpacity == 0.0) discard;',
         '  if (texture2D(landMask, vLandUv).r < 0.5) discard;',
+        '  vec2 lakeUv = (vLandUv - lakeBounds.xy) / (lakeBounds.zw - lakeBounds.xy);',
+        '  if (all(greaterThanEqual(lakeUv, vec2(0.0))) && all(lessThanEqual(lakeUv, vec2(1.0)))) {',
+        '    if (texture2D(localLakes, lakeUv).r > 0.5) discard;',
+        '  }',
         '  float r = length(gl_PointCoord - vec2(0.5));',
         '  if (r > 0.5) discard;',
         '  float alpha = 1.0 - smoothstep(0.30, 0.5, r);',
@@ -261,8 +307,9 @@
 
 
   // ── Marker class ──────────────────────────────────────────────────────────
-  function Marker(sharedMat, sharedGeo, hitGeo, cords, siteId) {
+  function Marker(sharedMat, sharedGeo, hitGeo, cords, siteId, isJourneySite) {
     this.isAnimating = false;
+    this.scaleFactor = siteId.startsWith('jesus_') ? 0.60 : 1;
     this.group = new THREE.Group();
     this.group.name = 'Marker';
 
@@ -273,7 +320,7 @@
 
     // glow
     this.glow = new THREE.Mesh(sharedGeo, sharedMat.clone());
-    if (!NOVUM_PAUL_MISSIONS.sites[siteId]) this.glow.material.color.set(cfg.colors.globeMarkerGlow);
+    if (!isJourneySite) this.glow.material.color.set(cfg.colors.globeMarkerGlow);
     this.glow.material.opacity = 0.6;
     this.group.add(this.glow);
     els.markerPoint.push(this.glow);
@@ -286,6 +333,70 @@
     this.group.position.copy(cords);
     this.group.visible = false;
     grps.markers.add(this.group);
+  }
+
+  function createTownLabels(container, camera) {
+    var overlay = document.createElement('div');
+    overlay.className = 'explorer-town-labels';
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.hidden = true;
+    container.appendChild(overlay);
+    var atlas = journeyAtlases.jesus;
+    var radius = missionRouteRadius;
+    var labels = Object.keys(atlas.towns).map(function (id) {
+      var site = atlas.sites[id];
+      var marker = document.createElement('div');
+      marker.className = 'explorer-town-marker';
+      var name = document.createElement('span');
+      name.className = 'explorer-town-name';
+      name.textContent = atlas.towns[id];
+      marker.appendChild(name);
+      overlay.appendChild(marker);
+      return { id: id, marker: marker, name: name, point: coordToPos(site.lat, site.lon, radius), width: 0 };
+    });
+    var world = new THREE.Vector3();
+    var projected = new THREE.Vector3();
+
+    return function renderTownLabels(visible) {
+      overlay.hidden = !visible;
+      if (!visible) return;
+
+      var width = overlay.clientWidth;
+      var height = overlay.clientHeight;
+      var placed = [];
+      var active = labels.find(function (label) { return label.id === selectedSite; });
+      var order = active ? [active].concat(labels.filter(function (label) { return label !== active; })) : labels;
+      order.forEach(function (label) {
+        world.copy(label.point).applyMatrix4(grps.globe.matrixWorld);
+        projected.copy(world).project(camera);
+        var x = (projected.x + 1) * width / 2;
+        var y = (1 - projected.y) * height / 2;
+        var inView = world.dot(camera.position) > radius * radius &&
+          projected.z > -1 && projected.z < 1 && x > 4 && x < width - 4 && y > 4 && y < height - 4;
+        label.marker.hidden = !inView;
+        if (!inView) return;
+
+        label.marker.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)';
+        label.marker.classList.toggle('explorer-town-selected', label === active);
+        label.width = label.width || label.name.offsetWidth + 4;
+        var w = label.width;
+        var h = 13;
+        var offsets = [[6, -h / 2], [-w - 5, -h / 2], [6, -h - 4], [6, 5]];
+        var offset = offsets.find(function (candidate) {
+          var left = x + candidate[0], top = y + candidate[1];
+          return left >= 2 && top >= 2 && left + w <= width - 2 && top + h <= height - 2 &&
+            placed.every(function (box) {
+              return left >= box[2] || left + w <= box[0] || top >= box[3] || top + h <= box[1];
+            });
+        });
+        label.name.style.visibility = offset ? 'visible' : 'hidden';
+        if (offset) {
+          label.name.style.left = offset[0] + 'px';
+          label.name.style.top = offset[1] + 'px';
+          placed.push([x + offset[0], y + offset[1], x + offset[0] + w, y + offset[1] + h]);
+        }
+      });
+    };
   }
 
   Marker.prototype.animateGlow = function () {
@@ -302,7 +413,7 @@
     }
   };
 
-  function Markers(sites) {
+  function Markers(discoverySites, journeySites) {
     var geo     = new THREE.SphereGeometry(2, 15, 15);
     var hitGeo  = new THREE.SphereGeometry(5, 8, 8);
     var mat     = new THREE.MeshBasicMaterial({ color: cfg.colors.globeMarkerColor, transparent: true, opacity: 0.8 });
@@ -311,25 +422,42 @@
     grps.markers = new THREE.Group();
     grps.markers.name = 'GlobeMarkers';
 
+    var sites = Object.assign({}, discoverySites, journeySites);
     Object.keys(sites).forEach(function (id) {
       var site = sites[id];
-      var isMissionSite = Boolean(NOVUM_PAUL_MISSIONS.sites[id]);
-      var radius = isMissionSite ? missionRouteRadius : cfg.sizes.globe;
+      if (site.water) return;
+      var isJourneySite = Boolean(journeySites[id]);
+      var radius = isJourneySite ? missionRouteRadius : cfg.sizes.globe;
       var coords = coordToPos(site.lat, site.lon, radius);
-      els.markers.push(new Marker(isMissionSite ? missionMat : mat, geo, hitGeo, coords, id));
+      els.markers.push(new Marker(isJourneySite ? missionMat : mat, geo, hitGeo, coords, id, isJourneySite));
     });
   }
 
-  function createMissionRoutes() {
+  function createMissionRoutes(atlas) {
     var material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    var sites = NOVUM_PAUL_MISSIONS.sites;
-    return NOVUM_PAUL_MISSIONS.missions.map(function (mission) {
+    var sites = atlas.sites;
+    return atlas.missions.map(function (mission) {
       var group = new THREE.Group();
       group.visible = false;
       grps.globe.add(group);
-      mission.stops.slice(1).forEach(function (stop, index) {
-        var start = sites[mission.stops[index].site];
+      var routeWidth = 0.10;
+      if (atlas === journeyAtlases.jesus) {
+        var points = mission.stops.map(function (stop) { return sites[stop.site]; }).filter(Boolean);
+        var origin = coordToPos(points[0].lat, points[0].lon, missionRouteRadius);
+        var span = points.reduce(function (distance, site) {
+          return Math.max(distance, origin.distanceTo(coordToPos(site.lat, site.lon, missionRouteRadius)));
+        }, 0);
+        routeWidth = clamp(span * 0.0029, 0.008, 0.048);
+      }
+      var start = sites[mission.stops[0].site];
+      mission.stops.slice(1).forEach(function (stop) {
         var end = sites[stop.site];
+        if (!start || !end || start === end) {
+          // Keep event positions aligned with playback when a stop adds no new route segment.
+          group.add(new THREE.Object3D());
+          if (end) start = end;
+          return;
+        }
         var from = coordToPos(start.lat, start.lon, missionRouteRadius);
         var to = coordToPos(end.lat, end.lon, missionRouteRadius);
         var bow = Math.min(from.distanceTo(to) * 0.065, 1.5);
@@ -342,7 +470,8 @@
             .setLength(missionRouteRadius));
         }
         var curve = new THREE.CatmullRomCurve3(arc);
-        group.add(new THREE.Mesh(new THREE.TubeBufferGeometry(curve, routeSegments, 0.10, routeRadialSegments, false), material));
+        group.add(new THREE.Mesh(new THREE.TubeBufferGeometry(curve, routeSegments, routeWidth, routeRadialSegments, false), material));
+        start = end;
       });
       return group;
     });
@@ -356,16 +485,16 @@
 
   function drawMissionProgress(playback, progress) {
     playback.progress = progress;
-    missionRoutes[playback.index].children.forEach(function (leg, index) {
+    missionRoutes[playback.key][playback.index].children.forEach(function (leg, index) {
       var segments = Math.ceil(clamp(progress - index, 0, 1) * routeSegments);
-      leg.visible = segments > 0;
-      leg.geometry.setDrawRange(0, segments * routeRadialSegments * 6);
+      leg.visible = Boolean(leg.geometry) && segments > 0;
+      if (leg.geometry) leg.geometry.setDrawRange(0, segments * routeRadialSegments * 6);
     });
 
     var lastStop = Math.floor(progress);
     if (lastStop === playback.lastStop) return;
     playback.lastStop = lastStop;
-    var mission = NOVUM_PAUL_MISSIONS.missions[playback.index];
+    var mission = journeyAtlases[playback.key].missions[playback.index];
     var sites = new Set(mission.stops.slice(0, lastStop + 1).map(function (stop) { return stop.site; }));
     showSites(sites, playback.active);
   }
@@ -379,26 +508,33 @@
     drawMissionProgress(playback, progress);
   }
 
-  function showMissionRoute(index, end, active, replay) {
-    if (!missionPlayback || missionPlayback.index !== index) {
-      missionRoutes.forEach(function (route, routeIndex) { route.visible = routeIndex === index; });
-      missionPlayback = index === null ? null : { index: index, target: end, active: active };
-      if (missionPlayback) {
-        if (replay && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          missionPlayback.from = 0;
-          missionPlayback.startedAt = performance.now();
-          missionPlayback.duration = Math.min(2200, 750 + end * 60);
-          drawMissionProgress(missionPlayback, 0);
-        } else {
-          drawMissionProgress(missionPlayback, end);
-        }
-      }
-      return;
+  function showMissionRoute(key, index, end, active, replay) {
+    if (!missionPlayback || missionPlayback.key !== key || missionPlayback.index !== index) {
+      Object.keys(missionRoutes).forEach(function (atlas) {
+        missionRoutes[atlas].forEach(function (route, routeIndex) {
+          route.visible = atlas === key && routeIndex === index;
+        });
+      });
+      missionPlayback = key === null ? null : { key: key, index: index, target: end, active: active };
     }
 
     var playback = missionPlayback;
+    if (!playback) return;
     playback.active = active;
     selectedSite = active;
+    var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (replay || playback.progress === undefined || reducedMotion) {
+      playback.target = end;
+      if (replay && !reducedMotion) {
+        playback.from = 0;
+        playback.startedAt = performance.now();
+        playback.duration = Math.min(2200, 750 + end * 60);
+        drawMissionProgress(playback, 0);
+      } else {
+        drawMissionProgress(playback, end);
+      }
+      return;
+    }
     if (end === playback.target) return;
 
     var now = performance.now();
@@ -407,7 +543,6 @@
     playback.target = end;
     playback.startedAt = now;
     playback.duration = Math.min(420, 220 + 20 * Math.abs(end - playback.from));
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) drawMissionProgress(playback, end);
   }
 
   // ── Dot / Dots ────────────────────────────────────────────────────────────
@@ -526,9 +661,11 @@
     grps.globe.add(grps.points);
 
     if (app.showPoints) {
-      new Markers(Object.assign({}, NOVUM_BOOK_DISCOVERIES.sites, NOVUM_PAUL_MISSIONS.sites));
+      new Markers(NOVUM_BOOK_DISCOVERIES.sites, Object.assign({}, journeyAtlases.paul.sites, journeyAtlases.jesus.sites));
       grps.globe.add(grps.markers);
-      missionRoutes = createMissionRoutes();
+      Object.keys(journeyAtlases).forEach(function (key) {
+        missionRoutes[key] = createMissionRoutes(journeyAtlases[key]);
+      });
     }
 
     app.scene.add(grps.main);
@@ -538,7 +675,7 @@
     var markerScale = (camera.position.length() - cfg.sizes.globe) / (cfg.sizes.globe * 1.2);
     for (var j = 0; j < els.markers.length; j++) {
       var m = els.markers[j];
-      m.group.scale.setScalar(markerScale);
+      m.group.scale.setScalar(markerScale * m.scaleFactor);
       if (!m.group.visible) continue;
       m.animateGlow();
     }
@@ -559,6 +696,8 @@
     var globeSection = document.getElementById('globe-section');
     var isFullscreenView = window.location.hash === '#globe-fullscreen';
     var explorer = null;
+    var atlasView = null;
+    var renderTownLabels;
 
     var W = container.clientWidth;
     var H = container.clientHeight || W;
@@ -582,6 +721,7 @@
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
     container.appendChild(renderer.domElement);
+    if (isFullscreenView) renderTownLabels = createTownLabels(container, camera);
 
     // Fullscreen owns the atlas controls; the embedded view is globe-only.
     if (isFullscreenView) {
@@ -657,6 +797,28 @@
     setup(app);
     if (isFullscreenView) {
       var overviewView = null;
+      var overviewDistance = orbitControls.maxDistance;
+
+      function adjustNavigationSpeed() {
+        var distance = camera.position.length();
+        var clearance = distance - cfg.sizes.globe;
+        orbitControls.zoomSpeed = clearance / distance;
+        orbitControls.rotateSpeed = atlasView === 'jesus' ? clamp(clearance * 0.0014, 0.006, 0.07) : 0.07;
+      }
+
+      orbitControls.addEventListener('change', adjustNavigationSpeed);
+      adjustNavigationSpeed();
+      renderer.domElement.addEventListener('wheel', function (event) {
+        if (!event.deltaY) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? renderer.domElement.clientHeight : 1;
+        var delta = clamp(event.deltaY * unit, -150, 150);
+        var surface = cfg.sizes.globe;
+        var distance = surface + (camera.position.length() - surface) * Math.exp(delta * 0.0008);
+        camera.position.setLength(clamp(distance, orbitControls.minDistance, orbitControls.maxDistance));
+        orbitControls.update();
+      }, { capture: true, passive: false });
 
       function setSpin(enabled) {
         anims.spinEnabled = enabled;
@@ -671,7 +833,7 @@
         orbitControls.enableDamping = true;
       }
 
-      function fitSites(sites) {
+      function fitSites(sites, minimumDistance) {
         var latitudes = sites.map(function (site) { return site.lat; });
         var longitudes = sites.map(function (site) { return site.lon; });
         var lat = (Math.min.apply(null, latitudes) + Math.max.apply(null, latitudes)) / 2;
@@ -685,7 +847,9 @@
           var depth = point.dot(direction);
           var offset = point.addScaledVector(direction, -depth).length();
           return Math.max(required, depth + offset / viewSlope);
-        }, radius * 1.08);
+        }, minimumDistance || radius * 1.08);
+        distance = Math.min(distance, overviewDistance);
+        orbitControls.maxDistance = distance;
         setSpin(false);
         anims.rotateSpeed = 0;
         moveCamera(direction.multiplyScalar(distance).applyEuler(grps.globe.rotation));
@@ -699,11 +863,13 @@
         section: globeSection,
         container: container,
         discoveries: NOVUM_BOOK_DISCOVERIES,
-        missions: NOVUM_PAUL_MISSIONS,
+        journeys: journeyAtlases,
         setAtlasView: function (atlas) {
+          atlasView = atlas;
           var points = els.globePoints;
           points.material.uniforms.fineTerrain.value = atlas ? 1 : 0;
-          points.geometry.setDrawRange(0, atlas ? points.geometry.attributes.position.count : globePointCount);
+          points.material.uniforms.localTerrain.value = 0;
+          points.geometry.setDrawRange(0, atlas ? points.geometry.userData.finePointCount : globePointCount);
           if (atlas && !overviewView) {
             overviewView = {
               position: camera.position.clone(),
@@ -712,20 +878,22 @@
             };
           } else if (!atlas && overviewView) {
             grps.globe.rotation.y = overviewView.rotation;
+            orbitControls.maxDistance = overviewDistance;
             moveCamera(overviewView.position);
             setSpin(overviewView.spinning);
             overviewView = null;
           }
         },
         fitDiscoverySites: fitDiscoverySites,
-        fitMission: function (index) {
-          var missions = NOVUM_PAUL_MISSIONS.missions;
+        fitMission: function (key, index) {
+          var atlas = journeyAtlases[key];
+          var missions = atlas.missions;
           var selected = missions[index];
-          var routes = selected.voyage ? [selected] : missions.filter(function (mission) { return !mission.voyage; });
+          var routes = key === 'jesus' || selected.voyage ? [selected] : missions.filter(function (mission) { return !mission.voyage; });
           var sites = routes.reduce(function (result, mission) {
-            return result.concat(mission.stops.map(function (stop) { return NOVUM_PAUL_MISSIONS.sites[stop.site]; }));
+            return result.concat(mission.stops.map(function (stop) { return atlas.sites[stop.site]; }).filter(Boolean));
           }, []);
-          fitSites(sites);
+          fitSites(sites, key === 'jesus' ? cfg.sizes.globe + 7 : undefined);
         },
         showMissionRoute: showMissionRoute,
         showSites: showSites,
@@ -765,7 +933,14 @@
       animateMissionRoute(performance.now());
       animate(camera);
       orbitControls.update();
+      var local = atlasView === 'jesus' && camera.position.length() < cfg.sizes.globe + 18 ? 1 : 0;
+      var points = els.globePoints;
+      if (local !== points.material.uniforms.localTerrain.value) {
+        points.material.uniforms.localTerrain.value = local;
+        points.geometry.setDrawRange(0, local ? points.geometry.attributes.position.count : points.geometry.userData.finePointCount);
+      }
       renderer.render(scene, camera);
+      if (renderTownLabels) renderTownLabels(atlasView === 'jesus');
       requestAnimationFrame(loop);
     }
     loop();

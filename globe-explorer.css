@@ -41,9 +41,15 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .explorer-project-location { font-size: 10px; color: #aaaab1; }
 .explorer-project-stage { font-size: 9px; color: #808087; }
 .explorer-globe { position: relative; min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; overflow: hidden; }
-.globe-fullscreen #globe-wrap { width: var(--globe-size, 100%) !important; height: var(--globe-size, auto) !important; aspect-ratio: 1; flex-shrink: 0; margin: auto !important; transition: none !important; }
+.globe-fullscreen #globe-wrap { position: relative; width: var(--globe-size, 100%) !important; height: var(--globe-size, auto) !important; aspect-ratio: 1; flex-shrink: 0; margin: auto !important; transition: none !important; }
 .explorer-globe-hint { flex: 0 0 auto; width: 100%; text-align: center; font-size: 10px; line-height: 1.7; color: #85858d; margin: 12px 0 0; }
 .explorer-globe canvas { touch-action: none; }
+.explorer-town-labels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.explorer-town-marker { position: absolute; top: 0; left: 0; }
+.explorer-town-marker::before { content: ""; position: absolute; width: 3px; height: 3px; top: -1.5px; left: -1.5px; background: #e2e2e2; border-radius: 50%; }
+.explorer-town-name { position: absolute; color: #dedede; white-space: nowrap; font-size: 10px; line-height: 12px; text-shadow: 0 1px 2px #000, 1px 0 #000, -1px 0 #000, 0 -1px #000; }
+.explorer-town-selected .explorer-town-name { color: #fff; font-weight: 800; }
+.explorer-journey-controls { width: min(100%, 38rem); flex: 0 0 auto; }
 .explorer-timeline { width: min(100%, 38rem); flex: 0 0 auto; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
 .explorer-timeline-header, .explorer-timeline-years, .explorer-timeline-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .explorer-timeline output { color: #ffc56a; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 16px; }
@@ -63,6 +69,26 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .explorer-mission-controls input[type="range"] { accent-color: var(--route-accent); }
 .explorer-mission-choices button[aria-pressed="true"] { background: #303030; border-color: #777; color: #fff; }
 .globe-explorer .explorer-mission-overview > h2 { text-align: left; font-size: 16px; margin: 0 0 12px; }
+.explorer-gospel-overview .explorer-mission-entry > summary { min-height: 33px; padding: 6px 16px 6px 3px; }
+.explorer-gospel-overview .explorer-mission-entry > summary::after { top: 6px; }
+.explorer-gospel-map-controls .explorer-timeline-actions { margin: 0; flex-wrap: nowrap; }
+.explorer-gospel-map-controls output { flex: 1; text-align: left; }
+.explorer-gospel-map-controls button { flex: 0 0 auto; }
+.explorer-gospel-timeline { margin: 5px 0 6px; }
+.explorer-gospel-timeline > p { font-size: 10px; margin: 0 0 8px; }
+.explorer-gospel-grid { --gospel-row-height: 18px; --gospel-heading-height: 30px; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
+.explorer-gospel-grid-active::before { content: ""; position: absolute; z-index: 1; left: 0; right: 0; height: 1px; top: calc(var(--gospel-heading-height) + (var(--active-event) + 0.5) * var(--gospel-row-height)); background: #6e6e6e; pointer-events: none; }
+.globe-explorer .explorer-gospel-column h3 { position: sticky; top: 0; z-index: 3; height: var(--gospel-heading-height); font-size: 10px; margin: 0; display: grid; place-content: center; color: #e5e5e5; background: var(--panel); }
+.explorer-gospel-lane { position: relative; display: grid; grid-template-rows: repeat(var(--event-rows), var(--gospel-row-height)); justify-items: stretch; cursor: ns-resize; touch-action: pan-y; }
+.explorer-gospel-lane::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(50% - 0.5px); border-left: 1px solid #4a4a4a; pointer-events: none; }
+.explorer-gospel-lane-empty { cursor: default; }
+.explorer-gospel-lane-empty::before { border-left-style: dashed; border-color: #383838; }
+.explorer-gospel-dot { position: relative; z-index: 2; background: transparent; border: 0; padding: 0; }
+.explorer-gospel-dot::before { content: ""; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border: 1px solid #bdbdbd; border-radius: 50%; transform: translate(-50%, -50%); background: #777; box-shadow: 0 0 0 2px var(--panel); }
+.explorer-gospel-dot.explorer-gospel-aligned::before { background: #d8d8d8; border-color: #eee; }
+.explorer-gospel-dot.explorer-gospel-cursor::before { box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #999; }
+.explorer-gospel-dot[aria-pressed="true"]::before { background: #fff; border-color: #fff; box-shadow: 0 0 0 2px #0b0b0b, 0 0 0 3px #ddd; }
+.explorer-gospel-dot:focus-visible { outline-offset: -1px !important; border-radius: 4px; }
 .explorer-acts-timeline { list-style: none; position: relative; padding: 0 0 0 17px; margin: 0 0 18px; }
 .explorer-acts-timeline > li { position: relative; margin-bottom: 7px; }
 .explorer-acts-timeline > li:not(:last-child)::after { content: ""; position: absolute; top: 15px; left: -13px; width: 1px; height: calc(100% + 1px); background: #4c4c4c; }
@@ -94,6 +120,13 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .explorer-mission-detail p { color: #dfdfdf; font-size: 13px; line-height: 1.65; margin: 10px 0; text-align: left; }
 .explorer-mission-detail p.explorer-muted { color: var(--muted); font-size: 12px; }
 .explorer-mission-detail a + p { margin-top: 20px; }
+.explorer-related-events { color: #b9b9b9; font-size: 11px; margin: 0 0 8px; text-align: left; }
+.explorer-related-events summary { cursor: pointer; }
+.explorer-story-divider { border: 0; border-top: 1px solid #3a3a3a; margin: 18px 0; }
+.explorer-story-section { font-size: 12px; margin: 19px 0 5px; text-align: left; }
+.explorer-story-divider + .explorer-story-section { margin-top: 0; }
+.explorer-story-section + p { margin-top: 0; }
+.explorer-selected-passage { font-weight: 800; }
 .explorer-book-filter { margin: 18px 0; }
 .explorer-discovery-count { font-size: 12px; margin: 16px 0 10px; }
 .explorer-discovery { background: #101012; border: 1px solid #303034; border-radius: 12px; }
@@ -157,6 +190,11 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 @media (max-width: 540px) {
   .explorer-mission-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .explorer-missions-active .explorer-globe-with-timeline { height: calc(min(90vw, 65dvh) + 12rem); }
+  .explorer-gospels-active .explorer-globe-with-timeline { height: calc(min(90vw, 65dvh) + 4.5rem); }
+}
+
+@media (min-width: 1101px) {
+  .explorer-gospels-active .explorer-workspace { grid-template-columns: 340px minmax(0, 1fr) 300px; }
 }
 
 .novum-atlas-section { padding-top: 8rem; padding-bottom: 5rem; border-top: 1px solid #ffffff12; }

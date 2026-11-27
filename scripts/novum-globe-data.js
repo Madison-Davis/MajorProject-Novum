@@ -402,3 +402,204 @@ var NOVUM_PAUL_MISSIONS = (function () {
 
   return { sites: sites, missions: missions, letters: letters };
 })();
+
+var NOVUM_JESUS_JOURNEY = (function () {
+  'use strict';
+
+  function place(title, country, lat, lon, approximate) {
+    return { title: title, country: country, lat: lat, lon: lon, approximate: Boolean(approximate) };
+  }
+
+  function event(site, title, passages, note, analysis, comparisonOnly) {
+    return { site: site && 'jesus_' + site, title: title, passages: passages.split(' | '), note: note, analysis: analysis, comparisonOnly: comparisonOnly };
+  }
+
+  // Regional anchors and disputed identifications are marked approximate.
+  var locations = {
+    jerusalem: place('Jerusalem', 'Judea', 31.778, 35.235),
+    nazareth: place('Nazareth', 'Galilee', 32.707, 35.302),
+    bethlehem: place('Bethlehem', 'Judea', 31.705, 35.210),
+    egypt: place('Egypt', 'Eastern Nile Delta', 30.108, 31.338, true),
+    jordan: place('Jordan River', 'Lower Jordan Valley', 31.836, 35.552, true),
+    jordanBethany: place('Bethany beyond the Jordan', 'Jordan Valley', 31.838, 35.550, true),
+    cana: place('Cana', 'Galilee', 32.747, 35.339, true),
+    capernaum: place('Capernaum', 'Galilee', 32.881, 35.575),
+    sychar: place('Sychar', 'Samaria', 32.203, 35.312, true),
+    aenon: place('Aenon near Salim', 'Jordan Valley', 32.399, 35.544, true),
+    galilee: place('Galilee', 'Regional reference point', 32.814, 35.454, true),
+    lake: place('Sea of Galilee', 'Galilee', 32.807, 35.589, true),
+    eastShore: place('East shore of the Sea of Galilee', 'Lake region', 32.825, 35.652, true),
+    gennesaret: place('Gennesaret', 'Galilee', 32.859, 35.510, true),
+    bethsaida: place('Bethsaida', 'Northern shore of the Sea of Galilee', 32.908, 35.627, true),
+    nain: place('Nain', 'Galilee', 32.631, 35.348),
+    tyre: place('Region of Tyre', 'Phoenicia', 33.276, 35.193, true),
+    caesarea: place('Caesarea Philippi', 'Northern Galilee region', 33.248, 35.695),
+    jericho: place('Jericho', 'Judea', 31.871, 35.444),
+    bethany: place('Bethany', 'Near Jerusalem', 31.772, 35.262),
+    ephraim: place('Ephraim', 'Judea', 31.954, 35.299, true),
+    olives: place('Mount of Olives', 'Jerusalem', 31.778, 35.247),
+    gethsemane: place('Gethsemane', 'Jerusalem', 31.780, 35.240, true),
+    golgotha: place('Golgotha and nearby tomb', 'Jerusalem', 31.778, 35.230, true)
+  };
+  var sites = {};
+  locations.lake.water = true;
+  Object.keys(locations).forEach(function (id) { sites['jesus_' + id] = locations[id]; });
+
+  var missions = [
+    {
+      label: 'Birth and early life', shortLabel: 'Early life', passage: 'Matthew 1–2 · Luke 1–2',
+      description: 'Matthew and Luke preserve distinct infancy accounts. Their own sequences are identified where the accounts diverge.',
+      stops: [
+        event(null, 'Jesus’ genealogies', 'Matthew 1:1–17 | Luke 3:23–38', 'Matthew traces Jesus’ family from Abraham through David. Luke presents a different line and traces it back to Adam.', 'Matthew’s opening emphasizes David and Abraham, while Luke places the genealogy after Jesus’ baptism and extends it to the whole human family.'),
+        event('jerusalem', 'Gabriel appears to Zechariah', 'Luke 1:5–25', 'An angel tells Zechariah at the temple that Elizabeth will have a son named John.', 'Luke begins in the temple with a priest who cannot speak. Zechariah’s restored voice later turns that silence into public testimony.'),
+        event('nazareth', 'Gabriel appears to Mary', 'Luke 1:26–38 | Matthew 1:18–25', 'Luke places Gabriel’s announcement to Mary in Nazareth during Elizabeth’s sixth month. Matthew separately tells of the angel’s message to Joseph in a dream.', 'Luke gives Mary the announcement and a spoken response. Matthew presents the pregnancy through Joseph’s decision to receive Mary and name the child.'),
+        event(null, 'Mary visits Elizabeth', 'Luke 1:39–56', 'Elizabeth greets Mary, and Mary praises God in the song known as the Magnificat. Luke names the Judean hill country and leaves the town unnamed.', 'Mary’s song describes God reversing the fortunes of the powerful and the lowly, a theme Luke returns to throughout the Gospel.'),
+        event(null, 'John the Baptist is born', 'Luke 1:57–80', 'Elizabeth gives birth. Zechariah confirms the name John and speaks again. The family’s town is unnamed.', 'The naming breaks with family expectations, and Zechariah’s blessing places John’s future work within Israel’s hope for deliverance.'),
+        event('bethlehem', 'Jesus is born in Bethlehem', 'Matthew 1:18–25 | Matthew 2:1 | Luke 2:1–7', 'Matthew reports the birth and names Bethlehem. Luke describes the journey from Nazareth and the newborn laid in a manger.', 'Bethlehem links both narratives to David. Matthew later develops the royal theme through the Magi, while Luke first gives attention to the child’s humble surroundings.'),
+        event('bethlehem', 'The shepherds visit', 'Luke 2:8–20', 'Angels announce the birth to shepherds, who go to Bethlehem and find the child.', 'Luke makes ordinary shepherds the first people outside the family to spread the birth announcement.'),
+        event(null, 'Jesus is circumcised and named', 'Luke 2:21', 'Luke dates the naming and circumcision to the eighth day and gives no separate location.', 'The paired acts of circumcision and naming place the child within Israel’s covenant and fulfill the name announced earlier.'),
+        event('jerusalem', 'Presentation in the temple', 'Luke 2:22–38', 'Mary and Joseph bring Jesus to the temple. Simeon blesses the family, and Anna speaks about the child.', 'Simeon juxtaposes hope for Israel and the nations with a warning about opposition. Anna adds a second public witness in the temple.'),
+        event('jerusalem', 'The Magi meet Herod', 'Matthew 2:1–8', 'The Magi ask about the newborn king. Herod sends them to Bethlehem. Matthew gives no timing relative to Luke’s presentation.', 'Matthew contrasts outsiders who seek the child with a ruler who regards the same news as a threat.'),
+        event('bethlehem', 'The Magi visit Jesus', 'Matthew 2:9–12', 'The Magi find the child with Mary, offer gifts, and return another way.', 'The visitors’ homage and their decision to avoid Herod distinguish their response from his.'),
+        event('egypt', 'Flight to Egypt', 'Matthew 2:13–18', 'Joseph takes Jesus and Mary to Egypt after a warning in a dream. Matthew gives no destination within Egypt.', 'Matthew’s citation of Hosea gives the flight and return an echo of Israel’s Exodus story.'),
+        event('nazareth', 'The family settles in Nazareth', 'Matthew 2:19–23 | Luke 2:39–40', 'Matthew reaches Nazareth after the return from Egypt. Luke describes the family returning to Nazareth after completing the temple observances.', 'The two accounts converge on Nazareth by different narrative paths, so that shared destination is firmer than a combined travel schedule.'),
+        event('jerusalem', 'Jesus at the temple at age twelve', 'Luke 2:41–52', 'During Passover, Mary and Joseph find Jesus listening to the teachers and asking questions.', 'The episode contrasts the parents’ anxiety with Jesus’ sense of obligation to his Father. Luke closes by emphasizing continued growth.')
+      ]
+    },
+    {
+      label: 'Baptism and early ministry', shortLabel: 'Early ministry', passage: 'Matthew 3–4 · Mark 1 · Luke 3–4 · John 1–4',
+      description: 'The Synoptic Gospels recount the baptism and wilderness. John adds early encounters, Cana, a Passover in Jerusalem, and the return through Samaria.',
+      stops: [
+        event('jordan', 'John begins preaching', 'Matthew 3:1–12 | Mark 1:1–8 | Luke 3:1–18 | John 1:19–28', 'John calls for repentance and baptizes. Luke places the start of his ministry in Tiberius’s fifteenth year, often dated around 28–29 CE.', 'Luke supplies a political and priestly setting and gives concrete examples of repentance. John’s Gospel introduces the Baptist chiefly as a witness to Jesus.', ['John']),
+        event('jordan', 'Jesus is baptized', 'Matthew 3:13–17 | Mark 1:9–11 | Luke 3:21–23 | John 1:29–34', 'The Synoptic accounts describe the baptism and the Spirit descending. John records the Baptist’s testimony about the Spirit. The pin marks the lower Jordan region.', 'Matthew, Mark, and Luke narrate the event itself. John presents the descending Spirit through the Baptist’s testimony, shifting the emphasis toward recognition and witness.', ['John']),
+        event(null, 'Temptation in the wilderness', 'Matthew 4:1–11 | Mark 1:12–13 | Luke 4:1–13', 'Jesus spends forty days in the wilderness. Matthew and Luke recount three temptations in different orders. The wilderness site is unspecified.', 'Matthew ends on a mountain, while Luke ends in Jerusalem. The different endings fit important settings in each Gospel.'),
+        event('jordanBethany', 'John questioned by messengers', 'John 1:19–28', 'Priests and Levites question John near Bethany beyond the Jordan. Its identification is approximate, and John gives no date relative to the wilderness account.', 'The questions ask John to define his status. His answers direct attention toward the one he says is already present.'),
+        event('jordanBethany', 'John points out Jesus', 'John 1:29–34', 'The next day, John identifies Jesus and describes seeing the Spirit descend. The map follows John’s preceding location.', 'John frames the scene as testimony about how the Baptist came to recognize Jesus and why others should trust that recognition.'),
+        event('jordanBethany', 'Andrew and Simon meet Jesus', 'John 1:35–42', 'Two of John’s disciples follow Jesus. Andrew brings his brother Simon, whom Jesus calls Cephas. John gives no new location for the encounter.', 'John presents discipleship spreading through personal testimony, with Andrew bringing Simon after deciding to follow Jesus himself.'),
+        event(null, 'Philip and Nathanael', 'John 1:43–51', 'Jesus calls Philip, who introduces Nathanael. John names Philip’s hometown, Bethsaida, and leaves their exact meeting place unstated.', 'Philip’s invitation leads Nathanael from skepticism about Nazareth to a confession about Jesus.'),
+        event('cana', 'Water becomes wine at Cana', 'John 2:1–11', 'At a wedding, Jesus turns water into wine. John calls this his first sign. The identification of Cana is debated.', 'John connects the sign to the disciples’ belief. The setting uses ordinary wedding hospitality to disclose something they had not yet seen.'),
+        event('capernaum', 'A short stay in Capernaum', 'John 2:12', 'Jesus goes to Capernaum with his family and disciples and stays a few days.', 'The brief notice connects Cana to the Passover journey. John leaves this visit distinct from the longer Capernaum ministry emphasized elsewhere.'),
+        event('jerusalem', 'Temple action at an early Passover', 'John 2:13–25', 'John places the disruption of commerce in the temple near the beginning of the ministry. The Synoptic Gospels place a comparable account in the final week.', 'John links the temple saying to Jesus’ body and resurrection. Its placement differs from the final-week sequence in the Synoptic Gospels.'),
+        event('jerusalem', 'Nicodemus visits at night', 'John 3:1–21', 'Jesus and Nicodemus discuss being born from above and what it means to believe. The Jerusalem setting follows John’s preceding account.', 'Nicodemus takes the language of birth literally at first, giving John a way to unfold what spiritual birth means.'),
+        event('aenon', 'Baptizing in Judea and at Aenon', 'John 3:22–36 | John 4:1–2', 'Jesus’ disciples baptize in Judea while John baptizes at Aenon near Salim. The pin represents John’s location, whose identification is debated.', 'The overlap shows two ministries operating at once. John responds to concern about Jesus’ growing following by affirming Jesus’ role.'),
+        event('sychar', 'The Samaritan woman at the well', 'John 4:1–42', 'On the way to Galilee, Jesus speaks with a woman at Jacob’s well. She tells the town, and Jesus stays with the Samaritans.', 'The conversation moves from water to worship and then to testimony. The town hears first through the woman and later through Jesus directly.'),
+        event('cana', 'Jesus heals an official’s son', 'John 4:43–54', 'In Cana, Jesus tells a royal official that his son in Capernaum will live. John identifies the healing as a sign.', 'The father acts on Jesus’ word before confirming the healing, making trust central to how John tells the sign.'),
+        event(null, 'John is imprisoned', 'Matthew 4:12 | Mark 1:14–15 | Luke 3:19–20 | John 3:24', 'The Synoptic accounts report John’s arrest. John explicitly places the preceding baptizing episode before the imprisonment. No prison site is specified in these passages.', 'Matthew and Mark use the arrest to mark a transition into Jesus’ Galilean preaching. Luke reports the arrest before narrating the baptism.', ['John'])
+      ]
+    },
+    {
+      label: 'Ministry in Galilee', shortLabel: 'Galilee', passage: 'Matthew 4–18 · Mark 1–9 · Luke 4–9 · John 6',
+      description: 'Teaching, healings, and journeys around Galilee and its neighboring regions. The Gospels arrange several episodes differently.',
+      stops: [
+        event('nazareth', 'Rejected in his hometown', 'Matthew 13:53–58 | Mark 6:1–6 | Luke 4:16–30', 'Luke opens the Galilean ministry with the synagogue episode in Nazareth. Matthew and Mark place the hometown rejection later.', 'Luke gives the hometown episode a programmatic role through Isaiah and examples of outsiders receiving help. Matthew and Mark emphasize unbelief.'),
+        event('capernaum', 'Capernaum becomes a base', 'Matthew 4:12–17 | Luke 4:31', 'Matthew describes Jesus settling at Capernaum after John’s arrest. Luke recounts his teaching there.', 'Matthew reads the move through Isaiah’s image of light in Galilee. Luke introduces Capernaum through public teaching and healing.'),
+        event('lake', 'Jesus calls the fishermen', 'Matthew 4:18–22 | Mark 1:16–20 | Luke 5:1–11', 'Simon and Andrew, James and John leave their fishing work. Luke includes a remarkable catch. John places Andrew and Simon’s first encounter with Jesus earlier in its own account.', 'Matthew and Mark stress the fishermen’s immediate response. Luke builds Simon’s call around recognition, fear, and reassurance after the catch.'),
+        event('capernaum', 'Healing in the synagogue', 'Mark 1:21–28 | Luke 4:31–37', 'Jesus teaches in Capernaum’s synagogue and frees a man from an unclean spirit.', 'The action illustrates the authority the crowd has already noticed in Jesus’ teaching.'),
+        event('capernaum', 'Peter’s mother-in-law and other healings', 'Matthew 8:14–17 | Mark 1:29–34 | Luke 4:38–41', 'Peter’s mother-in-law recovers from a fever, and people bring others to Jesus that evening.', 'The account moves from a private household to a public gathering. Matthew reads the healing through Isaiah’s language about bearing infirmities.'),
+        event('galilee', 'Prayer, preaching, and a leper healed', 'Matthew 4:23–25 | Matthew 8:1–4 | Mark 1:35–45 | Luke 4:42–44 | Luke 5:12–16', 'Jesus withdraws to pray and teaches around Galilee. All three Synoptic Gospels tell of a man with leprosy who is made clean. The pin represents the circuit.', 'Withdrawal for prayer and the decision to move on balance local demand with the wider purpose of the preaching circuit.'),
+        event('capernaum', 'A paralyzed man is healed', 'Matthew 9:1–8 | Mark 2:1–12 | Luke 5:17–26', 'Jesus forgives and heals a man carried by others. Mark and Luke describe friends lowering him through the roof.', 'The disagreement over forgiveness gives the public healing a second function: it demonstrates the authority Jesus has claimed.'),
+        event('capernaum', 'The tax collector and the question about fasting', 'Matthew 9:9–17 | Mark 2:13–22 | Luke 5:27–39', 'Jesus calls a tax collector named Matthew in Matthew and Levi in Mark and Luke. He shares a meal and later answers a question about fasting with images of a wedding and wineskins.', 'The meal and fasting dispute both ask who belongs at Jesus’ table and how his presence changes established practices.'),
+        event(null, 'The Sabbath and healing', 'Matthew 12:1–14 | Mark 2:23–3:6 | Luke 6:1–11', 'The disciples pluck grain on the Sabbath. In a separate synagogue scene, Jesus restores a man’s hand. The accounts do not identify specific sites.', 'The episodes distinguish human need and restoration from the dispute over what the Sabbath permits.'),
+        event(null, 'Jesus appoints the Twelve', 'Matthew 10:1–4 | Mark 3:13–19 | Luke 6:12–16', 'Jesus appoints twelve disciples. Mark and Luke place the appointment on an unnamed mountain.', 'Mark explicitly joins two purposes: the Twelve are to be with Jesus and then to be sent out.'),
+        event(null, 'The Sermon on the Mount and related teachings', 'Matthew 5–7 | Luke 6:17–49 | Luke 11:1–4 | Luke 12:22–34 | Luke 13:23–30', 'Matthew gathers the Beatitudes, salt and light, the Law, love of enemies, giving, prayer, fasting, worry, judgment, and the wise builder into one sermon. Luke shares several teachings in the Sermon on the Plain and elsewhere. No mountain is named.', 'Matthew’s sermon gathers the teachings into a sustained account of righteousness. Luke places parallel sayings in several settings and introduces blessings alongside woes.'),
+        event('capernaum', 'A centurion asks for help', 'Matthew 8:5–13 | Luke 7:1–10', 'Jesus heals the centurion’s servant. In Matthew the officer speaks to Jesus. In Luke he sends intermediaries.', 'Both accounts portray the officer as understanding authority. Luke’s use of intermediaries adds another layer to the encounter.'),
+        event('nain', 'The widow’s son is raised', 'Luke 7:11–17', 'Jesus meets a funeral procession at Nain and restores a widow’s son to life.', 'Luke emphasizes Jesus’ compassion for the widow and the crowd’s recognition of a prophet. The scene echoes stories about Israel’s prophets restoring life.'),
+        event(null, 'Jesus’ family and accusations against him', 'Matthew 12:22–50 | Mark 3:20–35 | Luke 8:19–21 | Luke 11:14–23', 'Opponents attribute Jesus’ exorcisms to demonic power. Jesus also describes those who do God’s will as his family. The settings vary across accounts.', 'The scenes redefine loyalty around God’s will and dispute how observers should interpret Jesus’ actions.'),
+        event('lake', 'Parables by the lake', 'Matthew 13:1–35 | Mark 4:1–34 | Luke 8:4–18 | Luke 13:18–21', 'The Gospels preserve overlapping teachings about the sower, lamp, and mustard seed. Mark also records the growing seed and notes that Jesus explains parables to his disciples.', 'The seed images emphasize different things: how people receive the message, how growth occurs, and how a small beginning can have a large result.'),
+        event('lake', 'Jesus calms a storm', 'Matthew 8:23–27 | Mark 4:35–41 | Luke 8:22–25', 'The disciples wake Jesus during a storm on the lake. He calms the wind and water.', 'The disciples’ fear after the wind stops turns a story of rescue into a question about Jesus’ identity.'),
+        event('eastShore', 'Healing on the far shore', 'Matthew 8:28–34 | Mark 5:1–20 | Luke 8:26–39', 'Jesus frees people from demonic possession near a herd of pigs. Matthew describes two men, while Mark and Luke describe one. The place names differ across accounts and manuscripts.', 'The accounts share a movement from isolation to restoration, even though the names and number of people differ.'),
+        event(null, 'Jairus’s daughter and the woman who seeks healing', 'Matthew 9:18–26 | Mark 5:21–43 | Luke 8:40–56', 'Jesus heals a woman who has been bleeding for years and restores a girl to life. Mark and Luke name the girl’s father Jairus. The town is unnamed.', 'The interwoven stories bring a longstanding illness and a sudden crisis together. The interruption builds tension around Jairus’s daughter.'),
+        event(null, 'Two blind men and a man unable to speak', 'Matthew 9:27–34', 'Matthew recounts Jesus healing two blind men and then a man who could not speak. No town is identified.', 'Matthew puts two restorations together and contrasts the crowd’s amazement with the Pharisees’ accusation.'),
+        event(null, 'The Twelve are sent out', 'Matthew 10:5–42 | Mark 6:7–13 | Luke 9:1–6', 'Jesus sends the Twelve to proclaim the message and heal. The accounts give instructions without naming their individual destinations.', 'Sending the Twelve extends Jesus’ work through others. The instructions also prepare them to face both hospitality and rejection.'),
+        event(null, 'John the Baptist is executed', 'Matthew 14:1–12 | Mark 6:14–29 | Luke 9:7–9', 'Matthew and Mark tell how Herod has John executed. Luke records Herod’s acknowledgment. These passages give no precise site.', 'Mark narrates the execution as a flashback that explains Herod’s fear and his response to reports about Jesus.'),
+        event('bethsaida', 'Feeding of the five thousand', 'Matthew 14:13–21 | Mark 6:30–44 | Luke 9:10–17 | John 6:1–15', 'All four Gospels describe a crowd fed from five loaves and two fish. Luke links the episode to the area of Bethsaida. The exact spot is unknown.', 'All four move from scarcity to abundance and gather leftovers. John also describes the crowd’s wish to make Jesus king, a response Jesus withdraws from.'),
+        event('lake', 'Jesus walks on the water', 'Matthew 14:22–33 | Mark 6:45–52 | John 6:16–21', 'Jesus approaches the boat on the water. Matthew adds Peter’s attempt to walk toward him.', 'Matthew adds Peter’s fear and rescue. Mark emphasizes that the disciples have yet to understand the loaves.'),
+        event('gennesaret', 'Healings at Gennesaret', 'Matthew 14:34–36 | Mark 6:53–56', 'People bring the sick to Jesus after the boat reaches Gennesaret.', 'The short landing scene shifts the focus from the disciples’ experience on the water to the response of people on shore.'),
+        event('capernaum', 'Bread of life discourse', 'John 6:22–71', 'After the feeding, Jesus teaches in the synagogue at Capernaum. Some disciples leave, and Peter speaks for the Twelve.', 'John develops the feeding’s significance through the crowd’s questions and Jesus’ claims about belief and life.'),
+        event(null, 'Handwashing and what defiles', 'Matthew 15:1–20 | Mark 7:1–23', 'Jesus answers a dispute over ritual handwashing by turning attention to what comes from within a person. The narratives give no exact site.', 'The dispute shifts from the source of ritual impurity to the dispositions and actions Jesus names.'),
+        event('tyre', 'The Syrophoenician woman', 'Matthew 15:21–28 | Mark 7:24–30', 'A woman asks Jesus to heal her daughter. Mark describes her as Syrophoenician, and Matthew as Canaanite. The pin represents the region.', 'The dialogue crosses a boundary of ethnicity and region. Matthew and Mark use different identifications while preserving the woman’s persistence.'),
+        event('eastShore', 'Healing in the Decapolis and feeding of the four thousand', 'Matthew 15:29–39 | Mark 7:31–8:10', 'Mark describes a man who is deaf and has difficulty speaking being healed in the Decapolis. Matthew describes broader healings. Both tell of the feeding of four thousand. The pin is regional.', 'The regional settings matter because they broaden the reach of the ministry. The feeding accounts retain their own quantities and travel contexts.'),
+        event(null, 'The warning about leaven', 'Matthew 16:5–12 | Mark 8:14–21', 'Jesus warns the disciples about leaven after they discover they have little bread. The wording and setting differ across the accounts.', 'The disciples mistake a metaphor for a comment about supplies, highlighting their difficulty interpreting teaching through what they have already seen.'),
+        event('bethsaida', 'A blind man at Bethsaida', 'Mark 8:22–26', 'Jesus leads a blind man outside Bethsaida and restores his sight in stages.', 'A healing that unfolds in stages sits just before Peter recognizes Jesus but struggles to understand the kind of Messiah he will be.'),
+        event('caesarea', 'Peter’s confession and the first passion prediction', 'Matthew 16:13–28 | Mark 8:27–9:1 | Luke 9:18–27', 'Peter identifies Jesus as the Messiah. Jesus speaks of suffering and calls disciples to take up their cross. Matthew and Mark locate the scene near Caesarea Philippi.', 'The confession is immediately followed by teaching about suffering, which complicates the disciples’ expectation of what messiahship entails.'),
+        event(null, 'Transfiguration and healing of a boy', 'Matthew 17:1–21 | Mark 9:2–29 | Luke 9:28–43', 'Jesus is transfigured before Peter, James, and John on an unnamed mountain. Afterward he heals a boy whom the disciples could not help.', 'The mountain revelation and the healing afterward place extraordinary insight beside the disciples’ failure to help below.'),
+        event('galilee', 'Second passion prediction and lessons for disciples', 'Matthew 17:22–23 | Matthew 18:1–9 | Mark 9:30–50 | Luke 9:43–50', 'Jesus again foretells his death and teaches about greatness, welcoming a child, an outsider acting in his name, and causes of stumbling. The pin is regional.', 'The prediction is followed by arguments about rank and belonging. Jesus answers with examples of welcome, service, and responsibility.')
+      ]
+    },
+    {
+      label: 'On the way to Jerusalem', shortLabel: 'To Jerusalem', passage: 'Matthew 19–20 · Mark 10 · Luke 9–19 · John 7–12',
+      description: 'Luke tells a long journey toward Jerusalem. John records festival visits and the raising of Lazarus in a distinct sequence.',
+      stops: [
+        event('jerusalem', 'Festival visits in John', 'John 5:1–18 | John 7:1–39 | John 9:1–41 | John 10:22–39', 'John describes visits to Jerusalem, including Bethesda, teaching during the Festival of Booths, healing a man born blind, and debate at the Festival of Dedication. These visits span different points in John’s account.', 'John’s festival settings shape the imagery and debates. These episodes should be read in John’s sequence even when compared with Synoptic material.'),
+        event(null, 'Luke sets the journey toward Jerusalem', 'Luke 9:51–62 | Luke 10:25–42 | Luke 15:1–32', 'Luke describes a Samaritan village refusing hospitality and frames teachings such as the Good Samaritan and the lost son within the journey. The parables themselves do not locate Jesus on the map.', 'Luke uses travel as a framework for teaching, so the setting of a parable and the place where Jesus tells it carry different meanings.'),
+        event(null, 'Marriage, children, and riches', 'Matthew 19:1–30 | Mark 10:1–31 | Luke 18:15–30', 'Jesus teaches about marriage, welcomes children, and discusses wealth and the demands and promises of discipleship. Matthew and Mark describe a regional setting beyond the Jordan.', 'These scenes move from disputed social rules to questions about who can enter the kingdom and what following Jesus requires.'),
+        event('bethany', 'Lazarus is raised', 'John 11:1–44', 'Jesus comes to Bethany, speaks with Martha and Mary, and calls Lazarus out of the tomb.', 'John gives Martha a central confession before the sign and places the family’s grief alongside Jesus’ claim about resurrection.'),
+        event('ephraim', 'Jesus withdraws to Ephraim', 'John 11:45–57', 'After leaders meet to discuss what to do about him, Jesus withdraws to Ephraim near the wilderness. The identification is approximate.', 'The withdrawal marks a change from public signs to growing danger as Passover approaches.'),
+        event(null, 'Third passion prediction and servant leadership', 'Matthew 20:17–28 | Mark 10:32–45 | Luke 18:31–34', 'Jesus tells the disciples what awaits him in Jerusalem. Matthew and Mark also recount a request for places of honor and Jesus’ response about serving others.', 'Matthew and Mark place a request for honor beside the prediction of suffering. Jesus answers by redefining authority as service.'),
+        event('jericho', 'Blind beggars receive sight near Jericho', 'Matthew 20:29–34 | Mark 10:46–52 | Luke 18:35–43', 'Mark names Bartimaeus. Matthew describes two men. Luke places the encounter as Jesus approaches Jericho, while Matthew and Mark place it as he leaves.', 'The number of people and direction of travel differ, but each account makes someone at the roadside an active participant in the encounter.'),
+        event('jericho', 'Jesus visits Zacchaeus', 'Luke 19:1–10', 'Jesus stops at the house of Zacchaeus, a chief tax collector who promises restitution and generosity.', 'The story joins a welcome into Zacchaeus’s home to concrete restitution, making his response publicly measurable.'),
+        event('bethany', 'Anointing at Bethany', 'Matthew 26:6–13 | Mark 14:3–9 | John 12:1–8', 'Matthew and Mark describe an unnamed woman anointing Jesus’ head. John names Mary and describes her anointing his feet before the entry into Jerusalem. Their placements in the final-week narrative differ.', 'The accounts connect the act with Jesus’ burial. The different names, gestures, and placements matter for how each writer develops that connection.')
+      ]
+    },
+    {
+      label: 'Final week in Jerusalem', shortLabel: 'Final week', passage: 'Matthew 21–27 · Mark 11–15 · Luke 19–23 · John 12–19',
+      description: 'Follow the entry into Jerusalem, public teaching, the meal, trial, crucifixion, and burial. Most stops are close together in Jerusalem.',
+      stops: [
+        event('olives', 'Jesus enters Jerusalem', 'Matthew 21:1–11 | Mark 11:1–11 | Luke 19:28–44 | John 12:12–19', 'All four describe the entry and public welcome. The Synoptic accounts connect the approach to the Mount of Olives.', 'The public welcome uses royal imagery. Luke adds Jesus’ grief over Jerusalem, while John explicitly connects the crowd to the raising of Lazarus.'),
+        event('jerusalem', 'Fig tree and temple action', 'Matthew 21:12–22 | Mark 11:12–26 | Luke 19:45–48 | John 2:13–22', 'Matthew and Mark include the fig tree in the final-week account. Matthew, Mark, and Luke place the temple action here, while John places a similar account early in the ministry.', 'Mark frames the temple action between encounters with the fig tree. John connects the comparable scene to Jesus’ body and later resurrection.', ['John']),
+        event('jerusalem', 'Authority, the vineyard, and questions at the temple', 'Matthew 21:23–22:46 | Mark 11:27–12:37 | Luke 20:1–44', 'Jesus answers challenges about his authority, tells of the vineyard tenants, and addresses taxes to Caesar, resurrection, the greatest commandment, and the Messiah as David’s son.', 'The linked episodes show a debate over authority unfolding through a story, public questions, and Jesus’ own reading of Scripture.'),
+        event('jerusalem', 'Teachers of the law and the widow’s offering', 'Matthew 23:1–36 | Mark 12:38–44 | Luke 20:45–21:4', 'Jesus criticizes the search for status. Mark and Luke contrast wealthy gifts with the offering of a poor widow.', 'Mark and Luke put the widow’s gift beside criticism of leaders who exploit widows, inviting attention to both her generosity and her vulnerability.'),
+        event('olives', 'Teaching on the temple and what is to come', 'Matthew 24–25 | Mark 13 | Luke 21:5–36', 'Jesus predicts the temple’s destruction and teaches about vigilance. Matthew and Mark locate the conversation on the Mount of Olives, while Luke introduces it at the temple.', 'The discourse moves between the temple’s fate and the disciples’ readiness. The Gospel settings and surrounding material shape how those themes are heard.'),
+        event('jerusalem', 'Judas agrees to betray Jesus', 'Matthew 26:14–16 | Mark 14:10–11 | Luke 22:1–6', 'Judas goes to the chief priests and agrees to hand Jesus over. The precise meeting place is not given.', 'The agreement shifts the plot from public opposition to betrayal from within the circle of disciples.'),
+        event('jerusalem', 'Last Supper and foot washing', 'Matthew 26:17–30 | Mark 14:12–26 | Luke 22:7–23 | John 13:1–30', 'The Synoptic Gospels recount the bread and cup at the meal. John describes Jesus washing his disciples’ feet and identifying his betrayer. The accounts frame the meal’s relation to Passover differently.', 'The Synoptic accounts and John attach different actions to the meal. Read together, they bring remembrance, service, and betrayal into view without settling the calendar.'),
+        event('olives', 'Jesus predicts Peter’s denial', 'Matthew 26:30–35 | Mark 14:26–31 | Luke 22:31–34 | John 13:36–38', 'Jesus tells Peter that he will deny him three times. Matthew and Mark place the prediction after the group leaves for the Mount of Olives, while Luke and John place it in the meal’s conversation.', 'The prediction makes a contrast between Peter’s confidence and what he will do under pressure. Luke also emphasizes his later task of strengthening others.'),
+        event('gethsemane', 'Prayer at Gethsemane', 'Matthew 26:36–46 | Mark 14:32–42 | Luke 22:39–46', 'Jesus prays while the disciples struggle to stay awake. Matthew and Mark name Gethsemane. Luke describes the Mount of Olives.', 'The prayer gives voice to anguish and commitment. The disciples’ sleep contrasts with Jesus’ repeated call to remain alert.'),
+        event('gethsemane', 'Jesus is arrested', 'Matthew 26:47–56 | Mark 14:43–52 | Luke 22:47–53 | John 18:1–12', 'Judas leads the arresting party. A disciple strikes a servant, whom John names Malchus, and John identifies Peter as the disciple. Mark alone mentions a young man who flees.', 'John emphasizes Jesus stepping forward and protecting the disciples. Mark’s fleeing witness adds a detail about the collapse of support around him.'),
+        event('jerusalem', 'Questioning and Peter’s denials', 'Matthew 26:57–75 | Mark 14:53–72 | Luke 22:54–71 | John 18:13–27', 'The accounts describe questioning by Jewish authorities and Peter’s three denials. John names Annas in the initial questioning, and Luke places the council meeting at daybreak.', 'Each narrative interweaves Jesus’ treatment with Peter’s behavior. Luke’s timing of the formal council and John’s naming of Annas distinguish their sequences.'),
+        event('jerusalem', 'Jesus before Pilate', 'Matthew 27:11–26 | Mark 15:1–15 | Luke 23:1–25 | John 18:28–19:16', 'Pilate questions Jesus, Barabbas is released, and Jesus is handed over to be crucified. Luke also describes a hearing before Herod Antipas.', 'The narratives give Pilate, the crowd, and other authorities different amounts of attention. Luke broadens the scene by including Herod Antipas.'),
+        event('jerusalem', 'The soldiers mock Jesus', 'Matthew 27:27–31 | Mark 15:16–20 | Luke 23:11 | John 19:1–5', 'Matthew, Mark, and John describe the soldiers clothing Jesus and mocking him as king. Luke describes mockery and a robe at Herod’s hearing.', 'The mock regalia turns the charge of kingship into a public humiliation. Luke presents a related scene in a different hearing.'),
+        event('golgotha', 'Crucifixion and death', 'Matthew 27:32–56 | Mark 15:21–41 | Luke 23:26–49 | John 19:16–37', 'All four tell of the crucifixion and death, with different details and sayings. The Synoptic accounts name Simon of Cyrene as carrying the cross. John describes Jesus carrying it. The site shown is approximate.', 'The accounts converge on the execution while preserving different sayings, witnesses, and actions. Source-specific details should remain attached to their own narratives.'),
+        event('golgotha', 'Jesus is buried', 'Matthew 27:57–66 | Mark 15:42–47 | Luke 23:50–56 | John 19:38–42', 'Joseph of Arimathea takes responsibility for the burial. John also names Nicodemus and places the tomb in a nearby garden. The exact location is debated.', 'The named burial figures and witnesses connect the death narratives to the later visit to the tomb.')
+      ]
+    },
+    {
+      label: 'Resurrection and appearances', shortLabel: 'Resurrection', passage: 'Matthew 28 · Mark 16 · Luke 24 · John 20–21',
+      description: 'Compare the empty-tomb accounts and appearances in Jerusalem, on the road, and in Galilee. The Gospels emphasize different locations and sequences.',
+      stops: [
+        event('golgotha', 'The women find the tomb empty', 'Matthew 28:1–10 | Mark 16:1–8 | Luke 24:1–12 | John 20:1–10', 'All four open the resurrection account with a visit to the tomb. They differ in whom they name and what happens next.', 'The shared discovery anchors each account. Differences in witnesses, messengers, and responses shape the beginning of each resurrection narrative.'),
+        event('golgotha', 'Jesus appears to Mary Magdalene', 'Matthew 28:8–10 | John 20:11–18 | Mark 16:9–11', 'John describes Mary recognizing Jesus at the tomb. Matthew tells of an appearance to the women as they leave. Mark 16:9–11 belongs to the longer ending of Mark.', 'John builds recognition around Jesus addressing Mary by name. Matthew gives the women a message for the disciples, and the longer ending of Mark compresses the scene.'),
+        event(null, 'Two disciples on the road to Emmaus', 'Luke 24:13–35 | Mark 16:12–13', 'Luke names Emmaus and recounts how two travelers recognize Jesus at a meal. Its location is disputed. Mark’s longer ending briefly describes an appearance to two travelers.', 'Luke moves from failed recognition through interpretation of Scripture to recognition at the meal. Mark’s longer ending leaves most of that development out.'),
+        event('jerusalem', 'Jesus appears to the gathered disciples', 'Luke 24:36–49 | John 20:19–29 | Mark 16:14–18', 'Luke and John describe appearances to gathered disciples. John adds a later encounter with Thomas. Mark’s longer ending adds a commissioning scene.', 'Luke emphasizes bodily presence and the opening of Scripture. John emphasizes peace, sending, and Thomas’s later response.'),
+        event('lake', 'Breakfast by the Sea of Galilee', 'John 21:1–23', 'Jesus appears by the lake, shares breakfast, and speaks with Peter. John names the sea without specifying a particular beach.', 'John places the conversation after an abundant catch and a meal. Peter’s repeated commission follows his earlier repeated denial.'),
+        event(null, 'The commission on a Galilean mountain', 'Matthew 28:16–20', 'The eleven meet Jesus in Galilee and are sent to make disciples of all nations. Matthew leaves the mountain unnamed.', 'Matthew closes in Galilee, pairing the disciples’ worship and doubt with a commission grounded in Jesus’ authority.'),
+        event('bethany', 'Ascension near Bethany', 'Luke 24:50–53 | Mark 16:19–20', 'Luke places the departure near Bethany. The longer ending of Mark mentions the ascension without naming a location.', 'Luke ends with blessing and the disciples returning to Jerusalem. The longer ending of Mark closes with their preaching and its confirmation.')
+      ]
+    }
+  ];
+
+  return {
+    title: 'Jesus’ journey',
+    sites: sites,
+    towns: {
+      jesus_jerusalem: 'Jerusalem',
+      jesus_bethlehem: 'Bethlehem',
+      jesus_bethany: 'Bethany',
+      jesus_jericho: 'Jericho',
+      jesus_ephraim: 'Ephraim',
+      jesus_sychar: 'Sychar',
+      jesus_nazareth: 'Nazareth',
+      jesus_cana: 'Cana',
+      jesus_nain: 'Nain',
+      jesus_capernaum: 'Capernaum',
+      jesus_bethsaida: 'Bethsaida',
+      jesus_caesarea: 'Caesarea Philippi',
+      jesus_tyre: 'Tyre'
+    },
+    missions: missions,
+    sources: [
+      ['Bible geography · OpenBible.info (CC BY 4.0)', 'https://www.openbible.info/geo/'],
+      ['Lake outlines · Natural Earth', 'https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-lakes/'],
+      ['The four Gospels · NRSVUE', 'https://www.biblegateway.com/versions/New-Revised-Standard-Version-Updated-Edition-NRSVue-Bible/']
+    ]
+  };
+})();
