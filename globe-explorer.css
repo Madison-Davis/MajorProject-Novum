@@ -60,9 +60,9 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .globe-explorer .explorer-overview-header h1, .explorer-overview-header .explorer-eyebrow { text-align: left; }
 .globe-explorer .explorer-overview-header h1 { margin-bottom: 0; }
 .explorer-overview-body > p { text-align: left; }
-:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active) { --panel: #0b0b0b; --line: #292929; --muted: #ababab; color: #f2f2f2; }
-:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active) .explorer-control-button { background: #191919; border-color: #3d3d3d; }
-:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active) .explorer-control-button:hover:not(:disabled) { background: #292929; border-color: #757575; }
+:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active, .explorer-christianity-active) { --panel: #0b0b0b; --line: #292929; --muted: #ababab; color: #f2f2f2; }
+:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active, .explorer-christianity-active) .explorer-control-button { background: #191919; border-color: #3d3d3d; }
+:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active, .explorer-christianity-active) .explorer-control-button:hover:not(:disabled) { background: #292929; border-color: #757575; }
 .explorer-mission-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 11px; }
 .explorer-mission-controls { --route-accent: #c6c6c6; }
 .explorer-mission-controls output { color: var(--route-accent); text-align: right; font-size: 13px; }
@@ -71,9 +71,9 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .globe-explorer .explorer-mission-overview > h2 { text-align: left; font-size: 16px; margin: 0 0 12px; }
 .explorer-gospel-overview .explorer-mission-entry > summary { min-height: 33px; padding: 6px 16px 6px 3px; }
 .explorer-gospel-overview .explorer-mission-entry > summary::after { top: 6px; }
-.explorer-gospel-map-controls .explorer-timeline-actions { margin: 0; flex-wrap: nowrap; }
-.explorer-gospel-map-controls output { flex: 1; text-align: left; }
-.explorer-gospel-map-controls button { flex: 0 0 auto; }
+.explorer-story-timeline .explorer-timeline-header { align-items: baseline; }
+.explorer-story-timeline .explorer-timeline-header label { flex-shrink: 0; }
+.explorer-story-timeline .explorer-timeline-years { font-size: 10px; }
 .explorer-gospel-timeline { margin: 5px 0 6px; }
 .explorer-gospel-timeline > p { font-size: 10px; margin: 0 0 8px; }
 .explorer-gospel-grid { --gospel-row-height: 18px; --gospel-heading-height: 30px; position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; }
@@ -145,6 +145,32 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .explorer-archaeology-detail p { margin: 0 0 8px; text-align: left; font-size: 13px; line-height: 1.65; }
 .explorer-archaeology-detail p:is(.explorer-muted, .explorer-label) { font-size: 11px; }
 .explorer-archaeology-detail a { display: block; margin-top: 13px; color: #e4e4e4; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.explorer-timeline.explorer-christianity-timeline { margin-inline: auto; }
+.explorer-christianity-active .explorer-panel .explorer-christianity-sidebar > h2,
+.explorer-christianity-active .explorer-panel .explorer-christianity-detail > h2 { margin-top: 0; text-align: left; }
+.explorer-christianity-layers { display: grid; gap: 5px; margin: 12px 0; }
+.explorer-christianity-layers button { text-align: left; }
+.explorer-christianity-layers button[aria-pressed="true"] { background: #dedede; border-color: #dedede; color: #111; font-weight: 700; }
+.explorer-christianity-layers button[aria-pressed="true"]:hover:not(:disabled) { background: #fff; color: #111; }
+.explorer-christianity-sidebar > p { text-align: left; }
+.explorer-christianity-sidebar [role="status"]:empty { display: none; }
+.explorer-christianity-country-controls { margin-top: 16px; }
+.explorer-christianity-country-controls select { background: #181818; border-color: #383838; }
+.explorer-christianity-milestones, .explorer-christianity-legend { list-style: none; margin: 14px 0 0; padding: 0; }
+.explorer-christianity-milestones > li + li { margin-top: 5px; }
+.explorer-christianity-milestones button { padding: 8px 10px; border-color: #303030; background: #121212; }
+.explorer-christianity-milestones button[aria-pressed="true"] { background: #272727; border-color: #888; }
+.explorer-christianity-legend > li { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #dadada; font-size: 11px; }
+.explorer-christianity-legend > li::before { content: ''; width: 12px; height: 12px; border-radius: 2px; background: var(--shade); border: 1px solid #636363; }
+.explorer-christianity-links { margin: 16px 0 7px; }
+.explorer-christianity-links a, .explorer-christianity-detail a { display: block; color: #e4e4e4; font-size: 11px; margin-top: 9px; text-decoration: underline; text-underline-offset: 3px; }
+.explorer-christianity-detail p { text-align: left; font-size: 13px; line-height: 1.65; margin: 10px 0; }
+.explorer-christianity-detail p:is(.explorer-muted, .explorer-label) { font-size: 11px; }
+.explorer-christianity-comparison { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; }
+.explorer-christianity-comparison meter { grid-column: 1 / -1; width: 100%; height: 10px; }
+.explorer-christianity-comparison meter::-webkit-meter-bar { background: #212121; border: 0; }
+.explorer-christianity-comparison meter::-webkit-meter-optimum-value { background: #bcbcbc; }
+.explorer-christianity-comparison meter::-moz-meter-bar { background: #bcbcbc; }
 .explorer-book-filter { margin: 18px 0; }
 .explorer-discovery-count { font-size: 12px; margin: 16px 0 10px; }
 .explorer-discovery { background: #101012; border: 1px solid #303034; border-radius: 12px; }
@@ -208,7 +234,7 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 @media (max-width: 540px) {
   .explorer-mission-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .explorer-missions-active .explorer-globe-with-timeline { height: calc(min(90vw, 65dvh) + 12rem); }
-  .explorer-gospels-active .explorer-globe-with-timeline { height: calc(min(90vw, 65dvh) + 4.5rem); }
+  .explorer-story-active .explorer-globe-with-timeline { height: calc(min(90vw, 65dvh) + 9rem); }
 }
 
 @media (min-width: 1101px) {

@@ -4,10 +4,9 @@
   var atlases = [
     { label: "Paul's three journeys", journey: "paul" },
     { label: "Jesus' journey", journey: "jesus" },
-    { label: "Moses' journey", description: "Places associated with the story of Moses." },
     { label: "Biblical books", discoveryTimeline: true },
     { label: "Archaeological discoveries", archaeology: true },
-    { label: "Christianity spreading", description: "The spread of early Christianity across the ancient world." }
+    { label: "Christianity spreading", christianity: true }
   ];
 
   window.createGlobeExplorer = function (options) {
@@ -139,6 +138,13 @@
     var discoveryResults = element('div', '', null, detailBody);
     function buildJourneyAtlas(key, data) {
       var isPaul = key === 'paul';
+      var isJesus = key === 'jesus';
+      var storyStops = [];
+      var sectionStarts = data.missions.map(function (mission, index) {
+        var start = storyStops.length;
+        mission.stops.forEach(function (stop, stopIndex) { storyStops.push([index, stopIndex]); });
+        return start;
+      });
       var missionIndex = 0;
       var routeEnd = isPaul ? data.missions[0].stops.length - 1 : 0;
       var selectedStop = -1;
@@ -154,57 +160,57 @@
       if (isPaul) {
         var missionChoices = element('div', 'explorer-mission-choices', null, routeControls);
         missionChoices.setAttribute('role', 'group');
-        missionChoices.setAttribute('aria-label', isPaul ? 'Choose a mission' : 'Choose a period');
+        missionChoices.setAttribute('aria-label', 'Choose a mission');
         missionButtons = data.missions.map(function (mission, index) {
           return button(mission.shortLabel || mission.label, 'explorer-control-button', missionChoices, function () {
             selectMission(index);
           });
         });
-        var routeHeader = element('div', 'explorer-timeline-header', null, routeControls);
-        var routeLabel = element('label', 'explorer-label', isPaul ? 'Route stops' : 'Journey events', routeHeader);
-        routeLabel.htmlFor = key + '-route-stop';
-        routeHeader.append(routeOutput);
-        routeOutput.htmlFor = key + '-route-stop';
-        routeSlider = element('input', '', null, routeControls);
-        routeSlider.id = key + '-route-stop';
-        routeSlider.type = 'range';
-        routeSlider.min = 1;
-        routeSlider.addEventListener('input', function () { goToStop(Number(routeSlider.value) - 1); });
-        routeSlider.addEventListener('wheel', function (event) {
-          if (event.ctrlKey || !event.deltaY) return;
-          var direction = Math.sign(event.deltaY);
-          var last = data.missions[missionIndex].stops.length - 1;
-          if ((direction < 0 && routeEnd === 0) || (direction > 0 && routeEnd === last)) {
-            wheelDistance = 0;
-            return;
-          }
-          event.preventDefault();
-          if (Math.sign(wheelDistance) !== direction) wheelDistance = 0;
-          wheelDistance += event.deltaMode ? direction * 40 : event.deltaY;
-          if (Math.abs(wheelDistance) < 40) return;
+      }
+      if (!isPaul) routeControls.classList.add('explorer-story-timeline');
+      var routeHeader = element('div', 'explorer-timeline-header', null, routeControls);
+      var routeLabel = element('label', 'explorer-label', isPaul ? 'Route stops' : isJesus ? 'Jesus’ life timeline' : 'Moses’ journey timeline', routeHeader);
+      routeLabel.htmlFor = key + '-route-stop';
+      routeHeader.append(routeOutput);
+      routeOutput.htmlFor = routeLabel.htmlFor;
+      routeSlider = element('input', '', null, routeControls);
+      routeSlider.id = routeLabel.htmlFor;
+      routeSlider.type = 'range';
+      routeSlider.min = 1;
+      routeSlider.addEventListener('input', function () { moveTimeline(Number(routeSlider.value)); });
+      routeSlider.addEventListener('wheel', function (event) {
+        if (event.ctrlKey || !event.deltaY) return;
+        var direction = Math.sign(event.deltaY);
+        var position = Number(routeSlider.value);
+        var next = position + direction;
+        if (next < 1 || next > Number(routeSlider.max)) {
           wheelDistance = 0;
-          goToStop(routeEnd + direction);
-        }, { passive: false });
+          return;
+        }
+        event.preventDefault();
+        if (Math.sign(wheelDistance) !== direction) wheelDistance = 0;
+        wheelDistance += event.deltaMode ? direction * 40 : event.deltaY;
+        if (Math.abs(wheelDistance) < 40) return;
+        wheelDistance = 0;
+        moveTimeline(next);
+      }, { passive: false });
+      if (!isPaul) {
+        var endpoints = element('div', 'explorer-timeline-years explorer-muted', null, routeControls);
+        element('span', '', data.missions[0].shortLabel, endpoints);
+        element('span', '', data.missions[data.missions.length - 1].shortLabel, endpoints);
       }
-
       var routeActions = element('div', 'explorer-timeline-actions', null, routeControls);
-      if (isPaul) {
-        previousStop = button('Previous stop', 'explorer-control-button', routeActions, function () { goToStop(routeEnd - 1); });
-      } else {
-        routeControls.classList.add('explorer-gospel-map-controls');
-        routeActions.append(routeOutput);
-        routeOutput.className = 'explorer-gospel-map-event';
-      }
+      previousStop = button(isPaul ? 'Previous stop' : 'Previous event', 'explorer-control-button', routeActions,
+        function () { moveTimeline(Number(routeSlider.value) - 1); });
       button('Reset view', 'explorer-control-button', routeActions, function () {
         options.fitMission(key, missionIndex, true);
       });
-      if (isPaul) {
-        nextStop = button('Next stop', 'explorer-control-button', routeActions, function () { goToStop(routeEnd + 1); });
-      }
+      nextStop = button(isPaul ? 'Next stop' : 'Next event', 'explorer-control-button', routeActions,
+        function () { moveTimeline(Number(routeSlider.value) + 1); });
 
       var missionOverview = element('div', 'explorer-mission-overview', null, null);
       element('h2', '', data.title || 'Paul’s journeys', missionOverview);
-      if (!isPaul) missionOverview.classList.add('explorer-gospel-overview');
+      if (isJesus) missionOverview.classList.add('explorer-gospel-overview');
       var actsTimeline = element('ol', 'explorer-acts-timeline', null, missionOverview);
       var missionDetail = element('div', 'explorer-mission-detail', null, null);
 
@@ -339,20 +345,23 @@
         });
 
         var body = element('div', 'explorer-mission-entry-body', null, accordion);
-        if (!isPaul) {
+        if (isJesus) {
           var gospelTimeline = buildGospelTimeline(mission, body);
           return { accordion: accordion, tracks: gospelTimeline.tracks, grid: gospelTimeline.grid };
         }
-        element('p', 'explorer-muted', 'With ' + mission.companions, body);
-        element('p', 'explorer-label', mission.voyage ? 'Imprisonment letters' : 'Related books', body);
-        addLetterList(data.letters[missionNumber], body);
-        var itinerary = element('details', 'explorer-mission-itinerary', null, body);
-        element('summary', '', mission.stops.length + ' stops', itinerary);
+        var itinerary = body;
+        if (isPaul) {
+          element('p', 'explorer-muted', 'With ' + mission.companions, body);
+          element('p', 'explorer-label', mission.voyage ? 'Imprisonment letters' : 'Related books', body);
+          addLetterList(data.letters[missionNumber], body);
+          itinerary = element('details', 'explorer-mission-itinerary', null, body);
+          element('summary', '', mission.stops.length + ' stops', itinerary);
+        }
         var list = element('ol', 'explorer-mission-stops', null, itinerary);
         var rows = mission.stops.map(function (stop, index) {
           var row = button('', 'explorer-mission-stop', element('li', '', null, list), function () {
             selectedStop = index;
-            routeEnd = Math.max(routeEnd, index);
+            routeEnd = isPaul ? Math.max(routeEnd, index) : index;
             updateMissionRoute();
             options.focusSite(stop.site);
             showStopDetail();
@@ -434,21 +443,39 @@
         showStopDetail();
       }
 
+      function moveTimeline(position) {
+        if (isPaul) {
+          goToStop(position - 1);
+          return;
+        }
+        var target = storyStops[position - 1];
+        if (!target) return;
+        var changed = target[0] !== missionIndex;
+        missionIndex = target[0];
+        selectedGospel = '';
+        selectedStop = routeEnd = target[1];
+        phaseOpened = true;
+        if (changed) options.fitMission(key, missionIndex, true);
+        updateMissionSelection();
+        updateMissionRoute(changed);
+        showStopDetail();
+      }
+
       function updateMissionRoute(replay) {
         var mission = data.missions[missionIndex];
-        var position = routeEnd + 1;
+        var position = (isPaul ? 0 : sectionStarts[missionIndex]) + (selectedStop >= 0 && !isPaul ? selectedStop : routeEnd) + 1;
         var current = mission.stops[routeEnd];
         routeOutput.value = isPaul ? position + ' of ' + mission.stops.length + ' · ' + eventTitle(current) :
           selectedStop < 0 ? mission.label : eventTitle(mission.stops[selectedStop]);
         var stop = mission.stops[selectedStop];
         options.showMissionRoute(key, missionIndex, routeEnd, stop ? stop.site : null, replay);
         var entry = missionEntries[missionIndex];
-        if (isPaul) {
-          routeSlider.max = mission.stops.length;
-          routeSlider.value = position;
-          routeSlider.setAttribute('aria-valuetext', routeOutput.value);
-          previousStop.disabled = routeEnd === 0;
-          nextStop.disabled = position === mission.stops.length;
+        routeSlider.max = isPaul ? mission.stops.length : storyStops.length;
+        routeSlider.value = position;
+        routeSlider.setAttribute('aria-valuetext', isPaul || selectedStop < 0 ? routeOutput.value : mission.label + ' · ' + routeOutput.value);
+        previousStop.disabled = position === 1;
+        nextStop.disabled = position === Number(routeSlider.max);
+        if (!isJesus) {
           entry.rows.forEach(function (row, index) {
             row.setAttribute('aria-pressed', String(index === selectedStop));
           });
@@ -483,8 +510,8 @@
         if (mission.years) element('p', 'explorer-muted', mission.years, missionDetail);
         element('p', '', mission.description || 'With ' + mission.companions, missionDetail);
         mission.passage.split(' · ').forEach(function (passage) { passageLink(passage, missionDetail); });
-        element('p', 'explorer-muted', isPaul ? 'Select a map dot or an event in the timeline to read the account.' :
-          'Open a theme, then select an event on a Gospel track to compare the accounts.', missionDetail);
+        element('p', 'explorer-muted', isJesus ? 'Scrub the timeline or open a theme to compare the four Gospel accounts. Routes follow approximate travel corridors.' :
+          'Select a map dot or an event in the timeline to read the account.', missionDetail);
         if (!isPaul) data.sources.forEach(function (source) { externalLink(source[0], source[1], missionDetail); });
         details.scrollTop = 0;
       }
@@ -498,7 +525,7 @@
         var location = site ? (isPaul ? site.country : site.title + ' · ' + site.country) : 'Location unspecified or uncertain';
         var locationInfo = element('div', 'explorer-story-location', null, missionDetail);
         element('p', 'explorer-muted', location + (site && site.approximate ? ' · Approximate position' : ''), locationInfo);
-        if (!isPaul && site) {
+        if (isJesus && site) {
           var related = stops.map(function (event, index) { return { event: event, index: index }; })
             .filter(function (item) { return item.index !== selectedStop && item.index <= routeEnd && item.event.site === stop.site; });
           if (related.length) {
@@ -521,8 +548,8 @@
           passageLink(stop.passage, missionDetail);
           return;
         }
-        element('h3', 'explorer-story-section', 'Gospel passages', missionDetail);
-        stop.passages.forEach(function (passage) {
+        element('h3', 'explorer-story-section', isJesus ? 'Gospel passages' : 'Bible passages', missionDetail);
+        (stop.passages || stop.passage.split(' · ')).forEach(function (passage) {
           var link = passageLink(passage, missionDetail);
           if (selectedGospel && passage.startsWith(selectedGospel + ' ')) link.classList.add('explorer-selected-passage');
         });
@@ -563,7 +590,8 @@
       };
     }
 
-    var journeys = { paul: buildJourneyAtlas('paul', options.journeys.paul), jesus: buildJourneyAtlas('jesus', options.journeys.jesus) };
+    var journeys = { paul: buildJourneyAtlas('paul', options.journeys.paul), jesus: buildJourneyAtlas('jesus', options.journeys.jesus),
+      moses: buildJourneyAtlas('moses', options.journeys.moses) };
 
     function buildArchaeologyAtlas(data) {
       var dated = data.records.filter(function (record) { return record.period; }).sort(function (a, b) {
@@ -728,6 +756,257 @@
 
     var archaeology = buildArchaeologyAtlas(options.archaeology);
 
+    function buildChristianityAtlas(data) {
+      var milestones = data.milestones;
+      var firstSnapshot = milestones.length;
+      var steps = milestones.map(function (milestone) {
+        return { date: milestone.date, layer: 'history' };
+      }).concat([
+        { date: '2010', layer: 'population' },
+        { date: '2020', layer: 'population' },
+        { date: 'Nov 2026', layer: 'scripture' },
+        { date: '2026', layer: 'missions' }
+      ]);
+      var layers = {
+        history: { label: 'Historical milestones', description: 'Dots mark selected recorded communities, missions, and events. Boundaries show present-day geography.' },
+        population: { label: 'Christian affiliation', description: 'Estimated share of residents who identify as Christian at each Pew Research Center snapshot.', scale: [[0, 55, 'Under 1%'], [1, 84, '1–9.9%'], [10, 126, '10–49.9%'], [50, 179, '50–79.9%'], [80, 231, '80–100%']] },
+        scripture: { label: 'Scripture access', description: 'Selected countries by number of tracked primary languages with no translated portion recorded. Some already have translation work underway.', scale: [[0, 64, '0'], [1, 102, '1–9'], [10, 147, '10–49'], [50, 187, '50–99'], [100, 231, '100+']] },
+        missions: { label: 'Mission activity', description: 'Countries where the organizations cited here publicly describe mission work or local partnerships.', scale: [[1, 218, 'Publicly reported work']] }
+      };
+      var sources = {
+        pew: 'https://www.pewresearch.org/dataset/dataset-of-global-religious-composition-estimates-for-2010-and-2020/',
+        owid: 'https://ourworldindata.org/grapher/religious-composition?indicator=share&religion=christians&tab=map',
+        scripture: 'https://wycliffe.net/', joshua: 'https://joshuaproject.net/resources/datasets',
+        sim: 'https://www.sim.org/about-sim-international/where-we-work/'
+      };
+      var step = 0;
+      var historyStep = 0;
+      var populationStep = firstSnapshot + 1;
+      var selectedEvent = 0;
+      var selectedCountry = '';
+      var countries;
+      var loading = false;
+
+      var sidebar = element('div', 'explorer-christianity-sidebar');
+      element('h2', '', 'Christianity spreading', sidebar);
+      var layerButtons = element('div', 'explorer-christianity-layers', null, sidebar);
+      layerButtons.setAttribute('role', 'group');
+      layerButtons.setAttribute('aria-label', 'Map layer');
+      var buttons = Object.keys(layers).map(function (key) {
+        return button(layers[key].label, 'explorer-control-button', layerButtons, function () {
+          if (key === steps[step].layer) return;
+          changeStep(key === 'history' ? historyStep : key === 'population' ? populationStep :
+            steps.findIndex(function (item) { return item.layer === key; }));
+        });
+      });
+      var description = element('p', 'explorer-muted', null, sidebar);
+      var eventList = element('ol', 'explorer-christianity-milestones', null, sidebar);
+      var eventButtons = milestones.map(function (event, index) {
+        var row = button('', 'explorer-project', element('li', '', null, eventList), function () {
+          changeStep(index);
+        });
+        element('span', 'explorer-project-location', event.date, row);
+        element('span', 'explorer-project-name', event.title, row);
+        return row;
+      });
+      var countryControls = element('div', 'explorer-christianity-country-controls', null, sidebar);
+      var countryLabel = element('label', 'explorer-label', 'Country or territory', countryControls);
+      countryLabel.htmlFor = 'christianity-country';
+      var select = element('select', 'explorer-input', null, countryControls);
+      select.id = countryLabel.htmlFor;
+      element('option', '', 'Choose a country or territory', select).value = '';
+      select.disabled = true;
+      select.addEventListener('change', function () { selectCountry(select.value); });
+      var legend = element('ul', 'explorer-christianity-legend', null, countryControls);
+      var links = element('div', 'explorer-christianity-links', null, sidebar);
+      var status = element('p', 'explorer-muted', null, sidebar);
+      status.setAttribute('role', 'status');
+
+      var detail = element('div', 'explorer-christianity-detail');
+      var controls = element('div', 'explorer-timeline explorer-christianity-timeline');
+      var header = element('div', 'explorer-timeline-header', null, controls);
+      var label = element('label', 'explorer-label', 'Christianity timeline', header);
+      label.htmlFor = 'christianity-time';
+      var output = element('output', '', null, header);
+      output.htmlFor = label.htmlFor;
+      var range = element('input', '', null, controls);
+      range.type = 'range';
+      range.id = label.htmlFor;
+      range.min = 0;
+      range.max = steps.length - 1;
+      range.addEventListener('input', function () { changeStep(Number(range.value)); });
+      var endpoints = element('div', 'explorer-timeline-years explorer-muted', null, controls);
+      element('span', '', 'c. 30 CE', endpoints);
+      element('span', '', '2026', endpoints);
+      var actions = element('div', 'explorer-timeline-actions', null, controls);
+      var previous = button('Previous', 'explorer-control-button', actions, function () { changeStep(step - 1); });
+      button('Reset view', 'explorer-control-button', actions, function () { resetView(true); });
+      var next = button('Next', 'explorer-control-button', actions, function () { changeStep(step + 1); });
+
+      function resetView(animated) {
+        var historical = step < firstSnapshot;
+        options.viewChristianityLocation(historical ? [28, 32] : [22, 16], historical ? 330 : 440, animated);
+      }
+
+      function moveToEvent(event) {
+        options.viewChristianityLocation([event.lat, event.lon], 292, true);
+      }
+
+      function changeStep(index) {
+        var wasHistorical = step < firstSnapshot;
+        step = index;
+        if (step < firstSnapshot) {
+          selectedEvent = historyStep = step;
+          moveToEvent(milestones[step]);
+        } else {
+          if (steps[step].layer === 'population') populationStep = step;
+          if (wasHistorical) resetView(true);
+        }
+        render();
+      }
+
+      function selectCountry(code) {
+        selectedCountry = code;
+        render();
+        var row = countries && countries[code];
+        if (row && row.center) options.viewChristianityLocation(row.center, 335, true);
+        details.scrollTop = 0;
+      }
+
+      function valueFor(row, current) {
+        if (current.layer === 'population') return row.share && row.share[current.date];
+        if (current.layer === 'scripture') return row.gaps;
+        return row.missions ? 1 : undefined;
+      }
+
+      function renderDetails(current) {
+        detail.replaceChildren();
+        if (current.layer === 'history') {
+          var event = milestones[selectedEvent];
+          element('h2', '', event.title, detail);
+          element('p', 'explorer-label', event.date, detail);
+          element('p', 'explorer-muted', event.place, detail);
+          element('hr', 'explorer-story-divider', null, detail);
+          element('p', '', event.note, detail);
+          externalLink(event.source, event.url, detail);
+          return;
+        }
+        var row = countries && countries[selectedCountry];
+        element('h2', '', row ? row.name : layers[current.layer].label, detail);
+        if (!row) element('p', 'explorer-muted', 'Select a country on the globe or in the list.', detail);
+        if (row && current.layer === 'population') {
+          if (!row.share) element('p', '', 'No comparable Pew estimate is available for this area.', detail);
+          else ['2010', '2020'].forEach(function (date) {
+            var value = row.share[date];
+            if (value == null) return;
+            var comparison = element('p', 'explorer-christianity-comparison', null, detail);
+            element('span', '', date, comparison);
+            element('strong', '', value < 0.1 ? '<0.1%' : value.toFixed(1) + '%', comparison);
+            var meter = element('meter', '', null, comparison);
+            meter.max = 100;
+            meter.value = value;
+            meter.setAttribute('aria-label', 'Christian affiliation in ' + date);
+          });
+        }
+        if (current.layer === 'scripture') {
+          if (row) element('p', '', row.gaps === undefined ? 'This country is outside the 18-country sample.' :
+            row.gaps.toLocaleString() + ' tracked primary languages with no translated portion recorded.', detail);
+          element('h3', 'explorer-story-section', 'Worldwide · November 2026', detail);
+          element('p', '', 'Wycliffe reports 558 languages where work needs to begin and 4,231 with at least some Scripture.', detail);
+          element('p', 'explorer-muted', 'Language counts describe translation availability. Speakers may use Scripture in other languages.', detail);
+          externalLink('Search for translated Scripture', 'https://www.scriptureearth.org/', detail);
+        }
+        if (row && current.layer === 'missions') {
+          if (row.missions) row.missions.forEach(function (source) { externalLink(source[0], source[1], detail); });
+          else element('p', '', 'The organizations included here have no country-specific listing for this area.', detail);
+          element('p', 'explorer-muted', 'Coverage reflects public reports from the listed organizations.', detail);
+        }
+      }
+
+      function render() {
+        var current = steps[step];
+        var layer = layers[current.layer];
+        var historical = current.layer === 'history';
+        buttons.forEach(function (node, index) {
+          node.setAttribute('aria-pressed', String(current.layer === Object.keys(layers)[index]));
+        });
+        description.textContent = layer.description;
+        countryControls.hidden = historical;
+        eventList.hidden = !historical;
+        eventButtons.forEach(function (node, index) {
+          node.setAttribute('aria-pressed', String(index === selectedEvent));
+        });
+        select.value = selectedCountry;
+        output.value = current.date;
+        range.value = step;
+        range.setAttribute('aria-valuetext', current.date + ' · ' + layer.label);
+        previous.disabled = step === 0;
+        next.disabled = step === steps.length - 1;
+        legend.replaceChildren();
+        links.replaceChildren();
+        if (historical) {
+          options.showSites(new Set(milestones.slice(0, step + 1).map(function (event) { return event.site; })),
+            milestones[selectedEvent].site);
+          options.showChristianityLayer(null);
+        } else {
+          options.showSites(new Set(), null);
+          var colors = {};
+          Object.keys(countries || {}).forEach(function (code) {
+            var value = valueFor(countries[code], current);
+            if (value == null) return;
+            var bin = layer.scale.slice().reverse().find(function (item) { return value >= item[0]; });
+            colors[code] = bin[1];
+          });
+          options.showChristianityLayer(colors, selectedCountry);
+          layer.scale.concat([[null, 43, current.layer === 'missions' ? 'Outside reported coverage' : 'No data shown']]).forEach(function (bin) {
+            var item = element('li', '', bin[2], legend);
+            item.style.setProperty('--shade', 'rgb(' + [bin[1], bin[1], bin[1]].join(' ') + ')');
+          });
+          if (current.layer === 'population') {
+            externalLink('Pew Research Center estimates', sources.pew, links);
+            externalLink('Processed by Our World in Data', sources.owid, links);
+          } else if (current.layer === 'scripture') {
+            externalLink('Data provided by Joshua Project', sources.joshua, links);
+            externalLink('Wycliffe Global Alliance · global totals', sources.scripture, links);
+          } else externalLink('SIM International · where we work', sources.sim, links);
+        }
+        renderDetails(current);
+      }
+
+      return {
+        mount: function () {
+          routeHost.append(controls);
+          overviewBody.append(sidebar);
+          detailBody.append(detail);
+          resetView(false);
+          render();
+          if (countries || loading) return;
+          loading = true;
+          status.textContent = 'Loading country data…';
+          options.loadChristianityMap().then(function (result) {
+            countries = result;
+            Object.keys(result).sort(function (a, b) { return result[a].name.localeCompare(result[b].name); }).forEach(function (code) {
+              element('option', '', result[code].name, select).value = code;
+            });
+            select.disabled = false;
+            status.textContent = '';
+            if (sidebar.isConnected) render();
+          }).catch(function () {
+            status.textContent = 'Country data could not load. Reopen this topic to retry.';
+          }).finally(function () { loading = false; });
+        },
+        selectSite: function (site) {
+          selectedEvent = milestones.findIndex(function (event) { return event.site === site; });
+          render();
+          moveToEvent(milestones[selectedEvent]);
+          details.scrollTop = 0;
+        },
+        selectCountry: selectCountry
+      };
+    }
+
+    var christianity = buildChristianityAtlas(options.christianity);
+
     function artifactYears() {
       return records.filter(function (record) {
         return !book || record.books.includes(book);
@@ -807,18 +1086,21 @@
       var atlas = atlases[selected];
       var isTimeline = Boolean(atlas && atlas.discoveryTimeline);
       var isArchaeology = Boolean(atlas && atlas.archaeology);
+      var isChristianity = Boolean(atlas && atlas.christianity);
       var journey = atlas && journeys[atlas.journey];
-      options.setAtlasView(isTimeline ? 'books' : isArchaeology ? 'archaeology' : journey ? atlas.journey : null);
+      options.setAtlasView(isTimeline ? 'books' : isArchaeology ? 'archaeology' : isChristianity ? 'christianity' : journey ? atlas.journey : null);
       root.classList.toggle('explorer-missions-active', Boolean(journey));
       root.classList.toggle('explorer-archaeology-active', isArchaeology);
       root.classList.toggle('explorer-books-active', isTimeline);
+      root.classList.toggle('explorer-christianity-active', isChristianity);
       root.classList.toggle('explorer-gospels-active', Boolean(atlas && atlas.journey === 'jesus'));
+      root.classList.toggle('explorer-story-active', Boolean(journey && atlas.journey !== 'paul'));
       timeline.hidden = !isTimeline;
       routeHost.replaceChildren();
-      hint.hidden = isTimeline || isArchaeology || Boolean(journey);
-      center.classList.toggle('explorer-globe-with-timeline', isTimeline || isArchaeology || Boolean(journey));
+      hint.hidden = isTimeline || isArchaeology || isChristianity || Boolean(journey);
+      center.classList.toggle('explorer-globe-with-timeline', hint.hidden);
       if (!journey) options.showMissionRoute(null);
-      if (!isTimeline && !isArchaeology && !journey) options.showSites(new Set(), null);
+      if (!hint.hidden) options.showSites(new Set(), null);
       fitGlobe();
       clear.hidden = selected < 0;
       if (!atlas) {
@@ -832,6 +1114,11 @@
       }
       if (isArchaeology) {
         archaeology.mount();
+        fitGlobe();
+        return;
+      }
+      if (isChristianity) {
+        christianity.mount();
         fitGlobe();
         return;
       }
@@ -871,8 +1158,13 @@
     renderDetails();
     updateCategories();
     return {
+      selectCountry: christianity.selectCountry,
       selectSite: function (site) {
         var atlas = atlases[selected];
+        if (atlas && atlas.christianity) {
+          christianity.selectSite(site);
+          return;
+        }
         if (atlas && atlas.archaeology) {
           archaeology.selectSite(site);
           return;

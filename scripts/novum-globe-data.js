@@ -577,9 +577,43 @@ var NOVUM_JESUS_JOURNEY = (function () {
     }
   ];
 
+  // Intermediate waypoints trace broad travel corridors, with coordinates in route order.
+  var ridge = [[31.917, 35.222], [32.081, 35.251], [32.203, 35.281], [32.385, 35.235], [32.557, 35.268]];
+  var coast = [[31.662, 35.073], [31.618, 34.814], [31.430, 34.432], [31.303, 34.244], [31.107, 33.812], [30.995, 33.119], [30.995, 32.542]];
+  var valley = [[31.959, 35.485], [32.161, 35.524], [32.347, 35.548], [32.505, 35.506], [32.664, 35.554], [32.722, 35.572], [32.769, 35.536], [32.815, 35.530], [32.863, 35.518]];
+  var descent = [[31.790, 35.252], [31.806, 35.289], [31.824, 35.325], [31.837, 35.365], [31.853, 35.405]];
+  var roads = {
+    'jerusalem:nazareth': ridge,
+    'bethlehem:nazareth': [[31.776, 35.215]].concat(ridge),
+    'bethlehem:jerusalem': [[31.731, 35.207], [31.755, 35.222]],
+    'bethlehem:egypt': coast,
+    'egypt:nazareth': coast.slice().reverse().concat([[31.793, 34.889], [31.959, 35.011], [32.108, 35.099], [32.368, 35.176], [32.579, 35.223]]),
+    'jordanBethany:cana': [[31.853, 35.475]].concat(valley.slice(0, 5), [[32.622, 35.387], [32.685, 35.357]]),
+    'cana:capernaum': [[32.773, 35.378], [32.789, 35.435], [32.808, 35.485], [32.836, 35.503], [32.875, 35.536]],
+    'nazareth:capernaum': [[32.730, 35.342], [32.762, 35.385], [32.779, 35.457], [32.807, 35.509], [32.861, 35.519]],
+    'jerusalem:capernaum': descent.concat(valley),
+    'jerusalem:aenon': descent.concat(valley.slice(0, 3)),
+    'aenon:sychar': [[32.347, 35.512], [32.294, 35.437], [32.216, 35.377]],
+    'sychar:cana': [[32.338, 35.304], [32.464, 35.270], [32.583, 35.290], [32.675, 35.315]],
+    'capernaum:nain': [[32.864, 35.519], [32.805, 35.502], [32.753, 35.449], [32.688, 35.406]],
+    'eastShore:bethsaida': [[32.863, 35.654], [32.893, 35.646]],
+    'gennesaret:capernaum': [[32.877, 35.541]],
+    'capernaum:tyre': [[32.900, 35.539], [32.942, 35.482], [33.044, 35.401], [33.159, 35.321], [33.225, 35.257]],
+    'tyre:eastShore': [[33.215, 35.382], [33.200, 35.572], [33.088, 35.610], [32.973, 35.633], [32.920, 35.650]],
+    'bethsaida:caesarea': [[32.951, 35.635], [33.057, 35.624], [33.171, 35.642]],
+    'caesarea:galilee': [[33.179, 35.624], [33.045, 35.591], [32.962, 35.522], [32.886, 35.487]],
+    'jerusalem:bethany': [[31.782, 35.244], [31.779, 35.254]],
+    'bethany:ephraim': [[31.814, 35.276], [31.876, 35.282], [31.922, 35.303]],
+    'ephraim:jericho': [[31.944, 35.337], [31.927, 35.377], [31.905, 35.405]],
+    'bethany:jericho': descent.slice(1),
+    'jerusalem:olives': [[31.780, 35.241]],
+    'olives:gethsemane': [[31.7762, 35.2446], [31.7779, 35.2417]]
+  };
+
   return {
     title: 'Jesus’ journey',
     sites: sites,
+    roads: roads,
     towns: {
       jesus_jerusalem: 'Jerusalem',
       jesus_bethlehem: 'Bethlehem',
@@ -598,6 +632,7 @@ var NOVUM_JESUS_JOURNEY = (function () {
     missions: missions,
     sources: [
       ['Bible geography · OpenBible.info (CC BY 4.0)', 'https://www.openbible.info/geo/'],
+      ['Historical travel corridors · GIS research', 'https://ruj.uj.edu.pl/server/api/core/bitstreams/b0283188-c8bc-4fc1-9f3b-bd96a393f1b5/content'],
       ['Lake outlines · Natural Earth', 'https://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-lakes/'],
       ['The four Gospels · NRSVUE', 'https://www.biblegateway.com/versions/New-Revised-Standard-Version-Updated-Edition-NRSVue-Bible/']
     ]
@@ -797,4 +832,170 @@ var NOVUM_ARCHAEOLOGY = (function () {
   ];
 
   return { sites: sites, records: records };
+})();
+
+var NOVUM_CHRISTIANITY = (function () {
+  'use strict';
+
+  var milestones = [
+    [30, 'c. 30 CE', 'The Jerusalem community', 'Jerusalem', 31.778, 35.232,
+      'Acts describes Pentecost and a community that gathered in Jerusalem for teaching, prayer, and shared meals. The date is approximate.',
+      'Acts 2', 'https://www.biblegateway.com/passage/?search=Acts+2&version=NRSVUE'],
+    [40, 'c. 40s CE', 'Antioch becomes a sending church', 'Antioch, Roman Syria', 36.205, 36.161,
+      'Acts describes believers from Cyprus and Cyrene preaching in Antioch, where the disciples were first called Christians. The community later sent Barnabas and Paul on mission.',
+      'Acts 11 and 13', 'https://www.biblegateway.com/passage/?search=Acts+11%3A19-26%3BActs+13%3A1-3&version=NRSVUE'],
+    [60, 'c. 60 CE', 'Paul reaches Rome', 'Rome, Roman Empire', 41.893, 12.483,
+      'Acts ends with Paul teaching in Rome. His Letter to the Romans already addresses a community there before his arrival.',
+      'Acts 28 and Romans 1', 'https://www.biblegateway.com/passage/?search=Acts+28%3A14-31%3BRomans+1%3A7-13&version=NRSVUE'],
+    [240, 'c. 240 CE', 'A Christian meeting place at Dura-Europos', 'Dura-Europos, present-day Syria', 34.749, 40.728,
+      'A building near the Euphrates was converted into a place of Christian worship. Its painted baptistery provides material evidence of an established community.',
+      'Yale University Art Gallery', 'https://duraeuropos.artgallery.yale.edu/christian-building'],
+    [314, 'By 314 CE', 'Christianity in the Armenian kingdom', 'Vagharshapat, present-day Armenia', 40.162, 44.294,
+      'The Armenian kingdom adopted Christianity in the early fourth century. Surviving traditions place Gregory the Illuminator at the center of the conversion of the royal court.',
+      'Metropolitan Museum of Art', 'https://www.metmuseum.org/ja/toah/ht/05/waa'],
+    [340, 'Mid-4th century CE', 'Christianity takes root in Aksum', 'Aksum, present-day Ethiopia', 14.130, 38.720,
+      'Aksum adopted Christianity during the reign of Ezana. The change appears on royal coins bearing crosses, and later church buildings attest its lasting place in the kingdom.',
+      'Metropolitan Museum of Art', 'https://www.metmuseum.org/ko/essays/african-christianity-in-ethiopia'],
+    [380, '380 CE', 'Imperial support for Nicene Christianity', 'Thessalonica, Roman Empire', 40.641, 22.937,
+      'An imperial edict issued at Thessalonica made Nicene Christianity the official religious standard of the Roman Empire. Christian communities already existed across many imperial cities.',
+      'Metropolitan Museum of Art', 'https://www.metmuseum.org/ja/toah/ht/05/waa'],
+    [550, 'Mid-6th century CE', 'Christian communities on the Malabar Coast', 'Malabar Coast, present-day Kerala, India', 10.284, 76.178,
+      'Cosmas Indicopleustes describes a church in a pepper-growing region usually identified with Malabar. His account also mentions Christians in Sri Lanka and a bishop appointed from Persia.',
+      'Cosmas, Christian Topography, book 3', 'https://earlychristianwritings.com/fathers/cosmas_03_book3.html'],
+    [597, '597 CE', 'Augustine’s mission in Kent', 'Canterbury, England', 51.279, 1.087,
+      'Augustine and his companions established a base at Canterbury. Christianity had reached Roman Britain earlier, and other Christian communities continued in western Britain and Ireland.',
+      'English Heritage', 'https://www.english-heritage.org.uk/visit/places/st-augustines-abbey/history-and-stories/history/'],
+    [635, '635 CE', 'The Church of the East in Tang China', 'Chang’an (Xi’an), China', 34.265, 108.947,
+      'The Xi’an stele, erected in 781, records the arrival of Alopen in 635. It attests the presence of East Syriac Christianity in Tang China and its connections along Asian trade routes.',
+      'SOAS University of London research', 'https://eprints.soas.ac.uk/18057/1/Ashurov_3569.pdf'],
+    [988, 'c. 988 CE', 'The baptism of Kyivan Rus’', 'Kyiv, present-day Ukraine', 50.454, 30.524,
+      'Volodymyr adopted Byzantine Christianity and ordered a public baptism in Kyiv. Christian communities existed before this turning point, and adoption across Rus’ unfolded gradually.',
+      'Internet Encyclopedia of Ukraine', 'https://www.encyclopediaofukraine.com/display.asp?linkpath=pages%5CC%5CH%5CChristianizationofUkraine.htm'],
+    [1455, 'c. 1455 CE', 'The Gutenberg Bible', 'Mainz, Germany', 49.999, 8.271,
+      'A Latin Bible printed with movable metal type in Mainz showed how printing could widen access to biblical texts. Its Latin text and production costs still shaped who could read it.',
+      'Library of Congress', 'https://guides.loc.gov/gutenberg'],
+    [1491, '1491 CE', 'The Kongo court adopts Christianity', 'Mbanza Kongo, present-day Angola', -6.267, 14.240,
+      'Nzinga Nkuwu accepted baptism, and his successor Afonso I fostered Christian learning and correspondence. Kongo artists and thinkers developed local Christian forms.',
+      'Metropolitan Museum of Art', 'https://www.metmuseum.org/exhibitions/listings/2015/kongo/blog/posts/kongo-christian-art'],
+    [1524, '1524 CE', 'Franciscan missions in New Spain', 'Mexico City, Mexico', 19.433, -99.133,
+      'Franciscans arrived in the early years of Spanish colonial rule. Conversion took place within unequal colonial power relations, and Indigenous peoples responded through adoption, adaptation, and resistance.',
+      'UNESCO World Heritage nomination archive', 'https://whc.unesco.org/uploads/nominations/1466.pdf'],
+    [1549, '1549 CE', 'Jesuit mission reaches Japan', 'Kagoshima, Japan', 31.594, 130.557,
+      'Francis Xavier arrived at Kagoshima. Christian networks grew in parts of Japan, and some communities later maintained practices in secret through official prohibitions.',
+      'UNESCO Memory of the World nomination archive', 'https://media.unesco.org/sites/default/files/webform/mow001/japan_spain_keicho.pdf'],
+    [1565, '1565 CE', 'Spanish missions in the Philippines', 'Cebu, Philippines', 10.294, 123.902,
+      'The Augustinians began a sustained Catholic mission in the Philippines within Spanish colonization. Filipino communities shaped how Christianity was practiced and passed on.',
+      'UNESCO World Heritage nomination archive', 'https://whc.unesco.org/uploads/nominations/1466.pdf'],
+    [1663, '1663 CE', 'A Bible in the Massachusett language', 'Cambridge, Massachusetts', 42.374, -71.116,
+      'The Bible printed in Cambridge used the Massachusett language. It emerged from a colonial mission in which Indigenous speakers and printers helped create and produce the text.',
+      'Library of Congress', 'https://tile.loc.gov/storage-services/service/rbc/rbc0001/2025/2025batch29029386/2025batch29029386.pdf'],
+    [1814, '1814 CE', 'An early mission in Aotearoa New Zealand', 'Rangihoua, Bay of Islands', -35.108, 174.109,
+      'Ngāpuhi leader Ruatara helped establish a Church Missionary Society settlement at Rangihoua and interpreted Samuel Marsden’s first sermon there.',
+      'Manatū Taonga · New Zealand History', 'https://nzhistory.govt.nz/samuel-marsden-conducts-nzs-first-christian-service'],
+    [1906, '1906 CE', 'The Azusa Street Revival', 'Los Angeles, California', 34.047, -118.239,
+      'A revival led by William J. Seymour brought visitors to Los Angeles. Participants and publications helped carry Pentecostal ideas across national borders.',
+      'Flower Pentecostal Heritage Center · Assemblies of God', 'https://news.ag.org/en/article-repository/news/2021/03/this-week-in-ag-history--march-11-1916'],
+    [1910, '1910 CE', 'Edinburgh World Missionary Conference', 'Edinburgh, Scotland', 55.949, -3.189,
+      'Protestant mission societies met in Edinburgh to discuss cooperation. The conference became an important point of reference for later ecumenical and missionary organizations.',
+      'Boston University Center for Global Christianity and Mission', 'https://www.bu.edu/cgcm/files/2022/08/AHundredYearsofMissionCooperation_Web.pdf']
+  ].map(function (row, index) {
+    return {
+      year: row[0], date: row[1], title: row[2], place: row[3], lat: row[4], lon: row[5],
+      note: row[6], source: row[7], url: row[8], site: 'christianity_' + index
+    };
+  });
+
+  return { milestones: milestones, sites: Object.fromEntries(milestones.map(function (event) {
+    return [event.site, event];
+  })) };
+})();
+
+var NOVUM_MOSES_JOURNEY = (function () {
+  'use strict';
+
+  var sites = {};
+  function place(id, title, country, lat, lon, approximate) {
+    sites['moses_' + id] = { title: title, country: country, lat: lat, lon: lon, approximate: Boolean(approximate) };
+  }
+  function stop(site, title, passage, note, analysis, breakRoute) {
+    return { site: site && 'moses_' + site, title: title, passage: passage, note: note, analysis: analysis, breakRoute: breakRoute };
+  }
+
+  place('delta', 'Eastern Nile Delta', 'Egypt', 30.811, 31.702, true);
+  place('midian', 'Midian region', 'Northwest Arabia', 28.483, 35.006, true);
+  place('sinai', 'Mount Sinai · traditional site', 'Southern Sinai', 28.539, 33.975, true);
+  place('rameses', 'Rameses · Qantir area', 'Eastern Nile Delta', 30.798, 31.833);
+  place('succoth', 'Succoth · Wadi Tumilat area', 'Eastern Nile Delta', 30.556, 32.023, true);
+  place('sin', 'Wilderness of Sin · regional anchor', 'Sinai Peninsula', 29.087, 33.184, true);
+  place('kadesh', 'Kadesh-barnea · proposed site', 'ʿAin Qudeirat area', 30.646, 34.423, true);
+  place('zered', 'Zered · traditional identification', 'Wadi al-Hasa, Jordan', 30.983, 35.749, true);
+  place('arnon', 'Arnon valley', 'Wadi Mujib, Jordan', 31.439, 35.816);
+  place('dibon', 'Dibon', 'Dhiban, Jordan', 31.501, 35.779);
+  place('moab', 'Plains of Moab', 'East of the Jordan near Jericho', 31.844, 35.581, true);
+  place('nebo', 'Mount Nebo', 'Moab, present-day Jordan', 31.768, 35.726);
+
+  return {
+    title: 'Moses’ journey',
+    sites: sites,
+    towns: {
+      moses_delta: 'Eastern Nile Delta', moses_midian: 'Midian', moses_sinai: 'Sinai · traditional site',
+      moses_rameses: 'Rameses', moses_succoth: 'Succoth region', moses_sin: 'Wilderness of Sin',
+      moses_kadesh: 'Kadesh-barnea', moses_zered: 'Zered valley', moses_arnon: 'Arnon valley',
+      moses_dibon: 'Dibon', moses_moab: 'Plains of Moab', moses_nebo: 'Mount Nebo'
+    },
+    roads: {
+      'delta:midian': [[30.6, 32.2], [30.5, 33.6], [30.2, 34.7], [29.59, 35.04]],
+      'midian:sinai': [[29.55, 35.04], [29.65, 34.65], [29.23, 34.42], [28.88, 34.13]],
+      'sinai:delta': [[29.1, 33.5], [29.55, 33.04], [30.15, 32.58], [30.55, 32.22]],
+      'sinai:kadesh': [[28.86, 34.16], [29.21, 34.22], [29.74, 34.32], [30.20, 34.40]]
+    },
+    sources: [
+      ['Numbers 33 · wilderness itinerary', 'https://www.biblegateway.com/passage/?search=Numbers+33&version=NRSVUE'],
+      ['Research on the itinerary’s desert place-names', 'https://ri.conicet.gov.ar/bitstream/handle/11336/183367/CONICET_Digital_Nro.3cf3fe29-876d-43db-81ec-1f31484a3a06_B.pdf?isAllowed=n&sequence=2']
+    ],
+    missions: [
+      {
+        label: 'Egypt, Midian, and the call', shortLabel: 'Early life', passage: 'Exodus 1–4',
+        description: 'Moses grows up in Egypt, flees to Midian, and returns after receiving his call. The map uses regional anchors for places the story leaves unnamed.',
+        stops: [
+          stop('delta', 'Moses is born in Egypt', 'Exodus 1:22–2:10', 'Moses’ mother hides him and sets him among the reeds. Pharaoh’s daughter finds him and raises him.', 'The narrative names the Nile but gives no precise birthplace or location for Pharaoh’s household.'),
+          stop('midian', 'Moses flees to Midian', 'Exodus 2:11–25', 'After killing an Egyptian who was beating a Hebrew, Moses flees to Midian. He helps the daughters of a priest and marries Zipporah.', 'Midian is a regional name. The well and settlement are unnamed.'),
+          stop('sinai', 'The burning bush', 'Exodus 3:1–4:17', 'At Horeb, Moses receives a commission to return to Egypt and lead the Israelites out.', 'The pin uses the later Jebel Musa tradition for the mountain of God. The biblical location remains debated.'),
+          stop('delta', 'Moses returns to Egypt', 'Exodus 4:18–31', 'Moses returns and, with Aaron, tells the elders what God has promised.', 'The story frames the return as the start of a public mission. The meeting place in Egypt is unspecified.')
+        ]
+      },
+      {
+        label: 'Passover and the Exodus', shortLabel: 'Exodus', passage: 'Exodus 5–19 · Numbers 33:3–15',
+        description: 'The story moves from forced labor and the Passover through departure, the sea crossing, and arrival at Sinai. Locations and connecting lines are approximate.',
+        stops: [
+          stop('rameses', 'Passover and departure from Rameses', 'Exodus 12:1–42 · Numbers 33:3–5', 'Israel keeps the Passover and departs from Rameses. Numbers begins its wilderness itinerary at Rameses.', 'The Qantir area is associated with Pi-Ramesses. The pin locates the named city, while the event comes from the biblical account.'),
+          stop('succoth', 'Camp at Succoth', 'Exodus 12:37–39 · Numbers 33:5–6', 'The itinerary names Succoth as the first camp after Rameses.', 'The eastern Delta and Wadi Tumilat are possible settings. The specific camp is uncertain.'),
+          stop(null, 'Crossing the sea', 'Exodus 14–15', 'The Israelites pass through the sea, and the story follows the crossing with songs of deliverance.', 'The Hebrew name Yam Suph is often rendered Sea of Reeds. The crossing site remains disputed.', true),
+          stop('sin', 'Manna in the wilderness', 'Exodus 16:1–36', 'In the wilderness of Sin, the people gather manna and receive instructions about rest on the seventh day.', 'Exodus places this camp between Elim and Sinai. The marker represents a broad Sinai region.'),
+          stop('sinai', 'The covenant at Sinai', 'Exodus 19–20 · Exodus 24', 'The people camp near Sinai, where Moses receives the commandments and the covenant is confirmed.', 'Jebel Musa is a traditional site. Other identifications have been proposed.')
+        ]
+      },
+      {
+        label: 'Sinai, Kadesh, and the wilderness', shortLabel: 'Wilderness', passage: 'Numbers 10–14 · Numbers 20',
+        description: 'Numbers follows the departure from Sinai, the spies’ report, and the return to Kadesh. Several camps lie between the map anchors.',
+        stops: [
+          stop('sinai', 'Departure from Sinai', 'Numbers 10:11–36', 'The cloud lifts from the tabernacle and the Israelites set out from Sinai.', 'The map links broad regions. The itinerary lists intermediate stops and camps whose locations remain uncertain.'),
+          stop('kadesh', 'The spies return to Kadesh', 'Numbers 13:1–3 · Numbers 13:25–33', 'Scouts survey Canaan and return with conflicting assessments of what the people should do.', 'The text locates the report at Kadesh. ʿAin Qudeirat is a proposed identification for Kadesh-barnea.'),
+          stop('kadesh', 'The years in the wilderness', 'Numbers 14:20–35', 'After the people refuse to enter the land, Numbers describes a generation remaining in the wilderness.', 'The stop represents the decision in the story. The intervening journeys span multiple camps.'),
+          stop('kadesh', 'Water at Meribah and Edom’s refusal', 'Numbers 20:1–21', 'At Kadesh, Moses strikes the rock when the people need water. Edom then refuses permission for Israel to pass through.', 'The account brings the themes of water, leadership, and passage together at Kadesh.')
+        ]
+      },
+      {
+        label: 'Moab and Mount Nebo', shortLabel: 'Mount Nebo', passage: 'Numbers 21–22 · Numbers 33:41–49 · Deuteronomy 34',
+        description: 'The final phase follows the route east of the Dead Sea into Moab, where Moses sees the land from Mount Nebo.',
+        stops: [
+          stop('zered', 'Crossing the Zered', 'Numbers 21:10–12 · Deuteronomy 2:13–15', 'After traveling around Edom, the Israelites cross the Zered brook.', 'The Zered is often associated with Wadi al-Hasa. The specific crossing is unknown.'),
+          stop('arnon', 'Along the Arnon', 'Numbers 21:13–24', 'The people camp beyond the Arnon and later seek passage through the territory of Sihon.', 'The narrative treats the Arnon as a boundary. The pin marks the valley in general.'),
+          stop('dibon', 'Camp at Dibon-gad', 'Numbers 33:44–46', 'The wilderness itinerary lists Dibon-gad among the final camps.', 'The map associates the name with Dhiban in present-day Jordan. The camp itself is not located precisely.'),
+          stop('moab', 'The plains of Moab', 'Numbers 22:1 · Numbers 33:48–49 · Deuteronomy 1:1–5', 'Israel camps opposite Jericho. Deuteronomy frames Moses’ addresses to Israel east of the Jordan.', 'The plain is a regional marker for the encampment and speeches.'),
+          stop('nebo', 'Moses looks out from Mount Nebo', 'Deuteronomy 34:1–12', 'Moses goes up from the plains of Moab, sees the land, and dies before Israel crosses the Jordan.', 'The journey ends at Nebo. Deuteronomy leaves Moses’ burial place unknown.')
+        ]
+      }
+    ]
+  };
 })();
