@@ -59,6 +59,7 @@
 - Source: [MajorProject-Compaulo](https://github.com/Madison-Davis/MajorProject-Compaulo).
 - `shared-compaulo.css`: downloaded snapshot of Compaulo's shared Portfolio, Codex, and Cortex styles.
 - `styles.css`: Novum's spreadsheet table styles; keep these when refreshing shared styles.
+- The Novum atlas globe renderer and its required local texture assets are included in this repository and copied into the generated site by the builder. Its story types are present, but map data is intentionally empty until it is added.
 - To refresh only the shared CSS, run from this repository:
 
 ```sh

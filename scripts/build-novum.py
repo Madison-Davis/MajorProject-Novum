@@ -19,8 +19,9 @@ from sheets import load_topics, render_table
 
 
 def stylesheet_version() -> str:
-    stylesheet = Path(__file__).resolve().parents[1] / "styles.css"
-    return hashlib.sha256(stylesheet.read_bytes() + stylesheet.with_name("shared-compaulo.css").read_bytes()).hexdigest()[:12]
+    assets = Path(__file__).resolve().parents[1]
+    stylesheets = (assets / "styles.css", assets / "shared-compaulo.css", assets / "globe-explorer.css")
+    return hashlib.sha256(b"".join(stylesheet.read_bytes() for stylesheet in stylesheets)).hexdigest()[:12]
 
 
 def slugify(value: str) -> str:
@@ -192,9 +193,15 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True)
     assets = Path(__file__).resolve().parents[1]
+    output_scripts = output_root / 'scripts'
+    output_scripts.mkdir()
     for name in ('styles.css', 'shared-compaulo.css'):
         shutil.copy2(assets / name, output_root / name)
     shutil.copy2(assets / 'scripts' / 'chapter-viewer.js', output_root / 'chapter-viewer.js')
+    shutil.copy2(assets / 'globe-explorer.css', output_root / 'globe-explorer.css')
+    for name in ('globe.js', 'globe-explorer.js', 'novum-globe-data.js'):
+        shutil.copy2(assets / 'scripts' / name, output_scripts / name)
+    shutil.copytree(assets / 'globe-assets', output_root / 'globe-assets')
 
     categories = sorted(
         (path for path in source_root.iterdir() if path.is_dir() and path.name.startswith("Novum - ")),
@@ -272,6 +279,7 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v={stylesheet_version()}">
+  <link rel="stylesheet" href="globe-explorer.css?v={stylesheet_version()}">
 </head>
 <body>
     <header class="site-header"><div class="container nav-wrap">
@@ -286,6 +294,19 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
             <div class="lab-accordion">{''.join(accordions)}</div>
         </div>
     </section></main>
+    <section id="come-to-life" class="section novum-atlas-section reveal">
+        <div class="container">
+            <p class="kicker">NOVUM ATLAS</p>
+            <h2 class="section-title">COME TO LIFE</h2>
+            <p class="section-intro">Explore the people, places, and journeys behind biblical history.</p>
+        </div>
+        <div id="globe-section" aria-label="Interactive globe">
+            <div id="globe-wrap"></div>
+        </div>
+        <div class="novum-globe-action">
+            <a class="cortex-fullscreen-link" href="index.html#globe-fullscreen" target="_blank" rel="noopener">Explore the atlas ↗</a>
+        </div>
+    </section>
   <script>
         document.addEventListener('click', function(e) {{
             const link = e.target.closest('a[href]');
@@ -313,6 +334,13 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
         }}), {{ threshold: 0.1, rootMargin: '0px 0px -40px 0px' }});
         document.querySelectorAll('.reveal').forEach((element) => observer.observe(element));
   </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/106/three.min.js"></script>
+  <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+  <script src="globe-assets/libs/THREE.MeshLine.js"></script>
+  <script src="globe-assets/libs/orbit-controls.js"></script>
+  <script src="scripts/novum-globe-data.js"></script>
+  <script src="scripts/globe-explorer.js"></script>
+  <script src="scripts/globe.js"></script>
 </body>
 </html>
 '''
