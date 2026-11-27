@@ -52,17 +52,17 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .explorer-journey-controls { width: min(100%, 38rem); flex: 0 0 auto; }
 .explorer-timeline { width: min(100%, 38rem); flex: 0 0 auto; padding: 10px 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
 .explorer-timeline-header, .explorer-timeline-years, .explorer-timeline-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.explorer-timeline output { color: #ffc56a; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 16px; }
-.explorer-timeline input[type="range"] { display: block; width: 100%; margin: 6px 0 0; accent-color: #ffc56a; cursor: pointer; }
+.explorer-timeline output { color: #e1e1e1; font-weight: 800; font-variant-numeric: tabular-nums; font-size: 16px; }
+.explorer-timeline input[type="range"] { display: block; width: 100%; margin: 6px 0 0; accent-color: #c6c6c6; cursor: pointer; }
 .explorer-timeline .explorer-timeline-map-help { font-size: 10px; text-align: left; }
 .explorer-timeline-actions { flex-wrap: wrap; margin-top: 6px; }
 .explorer-overview-header { padding-bottom: 17px; margin-bottom: 19px; border-bottom: 1px solid var(--line); }
 .globe-explorer .explorer-overview-header h1, .explorer-overview-header .explorer-eyebrow { text-align: left; }
 .globe-explorer .explorer-overview-header h1 { margin-bottom: 0; }
 .explorer-overview-body > p { text-align: left; }
-.explorer-missions-active { --panel: #0b0b0b; --line: #292929; --muted: #ababab; color: #f2f2f2; }
-.explorer-missions-active .explorer-control-button { background: #191919; border-color: #3d3d3d; }
-.explorer-missions-active .explorer-control-button:hover:not(:disabled) { background: #292929; border-color: #757575; }
+:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active) { --panel: #0b0b0b; --line: #292929; --muted: #ababab; color: #f2f2f2; }
+:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active) .explorer-control-button { background: #191919; border-color: #3d3d3d; }
+:is(.explorer-missions-active, .explorer-archaeology-active, .explorer-books-active) .explorer-control-button:hover:not(:disabled) { background: #292929; border-color: #757575; }
 .explorer-mission-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-bottom: 11px; }
 .explorer-mission-controls { --route-accent: #c6c6c6; }
 .explorer-mission-controls output { color: var(--route-accent); text-align: right; font-size: 13px; }
@@ -127,21 +127,39 @@ body.globe-fullscreen { height: 100dvh !important; width: 100%; overflow: hidden
 .explorer-story-divider + .explorer-story-section { margin-top: 0; }
 .explorer-story-section + p { margin-top: 0; }
 .explorer-selected-passage { font-weight: 800; }
+.explorer-timeline.explorer-archaeology-timeline { margin-inline: auto; }
+.explorer-archaeology-active .explorer-label { color: #b9b9b9; }
+.globe-explorer .explorer-archaeology-sidebar h2 { margin: 0 0 10px; font-size: 17px; text-align: left; }
+.explorer-archaeology-sidebar > p { text-align: left; }
+.explorer-archaeology-sidebar label { margin-top: 16px; }
+.explorer-archaeology-sidebar select { border-color: #3c3c3c; background: #171717; }
+.explorer-archaeology-sidebar h3 { margin: 18px 0 8px; color: #b9b9b9; font-size: 11px; text-align: left; }
+.explorer-archaeology-findings { list-style: none; display: grid; gap: 6px; margin: 0; padding: 0; }
+.explorer-archaeology-findings .explorer-project { gap: 3px; padding: 8px 10px; border-color: #303030; border-radius: 9px; background: #121212; color: #eee; }
+.explorer-archaeology-findings .explorer-project:hover, .explorer-archaeology-findings .explorer-project[aria-pressed="true"] { background: #272727; border-color: #747474; }
+.explorer-archaeology-findings .explorer-project-location { color: #b9b9b9; }
+.explorer-archaeology-context { margin-top: 15px; border-top: 1px solid var(--line); }
+.explorer-archaeology-context summary { padding: 10px 0; color: #c7c7c7; font-size: 11px; cursor: pointer; }
+.explorer-archaeology-context summary:focus-visible { outline: 2px solid #ddd; outline-offset: 2px; }
+.globe-explorer .explorer-archaeology-detail h2 { margin: 0 0 12px; text-align: left; }
+.explorer-archaeology-detail p { margin: 0 0 8px; text-align: left; font-size: 13px; line-height: 1.65; }
+.explorer-archaeology-detail p:is(.explorer-muted, .explorer-label) { font-size: 11px; }
+.explorer-archaeology-detail a { display: block; margin-top: 13px; color: #e4e4e4; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .explorer-book-filter { margin: 18px 0; }
 .explorer-discovery-count { font-size: 12px; margin: 16px 0 10px; }
 .explorer-discovery { background: #101012; border: 1px solid #303034; border-radius: 12px; }
-.explorer-discovery[open] { border-color: #826332; }
+.explorer-discovery[open] { border-color: #777; }
 .explorer-discovery summary { padding: 10px 12px; cursor: pointer; }
-.explorer-discovery summary::marker { color: #ffc56a; }
+.explorer-discovery summary::marker { color: #c7c7c7; }
 .explorer-discovery summary:focus-visible { outline: 2px solid #eee; outline-offset: -3px; border-radius: 12px; }
 .explorer-discovery summary .explorer-project-location { display: block; margin-top: 4px; }
-.explorer-discovery-date { display: block; margin-top: 4px; color: #ffd89a; font-size: 11px; }
+.explorer-discovery-date { display: block; margin-top: 4px; color: #d0d0d0; font-size: 11px; }
 .explorer-book-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .explorer-book-tag, .explorer-book-tag-extra { padding: 2px 7px; border: 1px solid #3a3a40; border-radius: 999px; color: #d3d3d8; font-size: 10px; line-height: 1.4; }
 .explorer-discovery:not([open]) .explorer-book-tag:nth-child(n+4),
 .explorer-discovery[open] .explorer-book-tag-extra { display: none; }
 .explorer-discovery-body { padding: 0 12px 12px; font-size: 12px; line-height: 1.6; }
-.explorer-discovery-body a { display: block; width: fit-content; margin-top: 8px; color: #ffd89a; font-size: 11px; }
+.explorer-discovery-body a { display: block; width: fit-content; margin-top: 8px; color: #e4e4e4; font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
 .explorer-detail-header { display: flex; justify-content: space-between; align-items: center; }
 .explorer-detail-header .explorer-eyebrow { margin: 0; }
 .explorer-close { background: #1d1d20; border: 1px solid #353539; border-radius: 50%; color: #ccc; width: 24px; height: 24px; line-height: 1; font-size: 18px !important; }

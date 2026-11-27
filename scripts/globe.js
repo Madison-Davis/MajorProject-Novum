@@ -8,8 +8,8 @@
     scale:   { points: 0.008, markers: 0.008, globeScale: 1 },
     colors: {
       globeDotColor:    'rgb(155, 155, 155)',
-      globeMarkerColor: 'rgb(255, 197, 106)',
-      globeMarkerGlow:  'rgb(255, 224, 168)',
+      globeMarkerColor: 'rgb(240, 240, 240)',
+      globeMarkerGlow:  'rgb(210, 210, 210)',
       globeLines:       'rgb(190, 190, 190)',
       globeLinesDots:   'rgb(220, 220, 220)'
     },
@@ -36,6 +36,15 @@
   var routeSegments = 36;
   var routeRadialSegments = 5;
   var missionPlayback = null;
+  var navigation = {
+    siteClearance: 11,
+    artifactMinClearance: 7,
+    artifactOverviewClearance: 32,
+    angularPadding: 4 * Math.PI / 180,
+    rotatePerClearance: 0.0012,
+    regionalDragDamping: 0.28,
+    travelDuration: 780
+  };
 
   // ── Shaders ───────────────────────────────────────────────────────────────
   var shaders = { atmosphere: {}, globe: {}, dot: {} };
@@ -307,9 +316,9 @@
 
 
   // ── Marker class ──────────────────────────────────────────────────────────
-  function Marker(sharedMat, sharedGeo, hitGeo, cords, siteId, isJourneySite) {
+  function Marker(sharedMat, sharedGeo, hitGeo, cords, siteId, isDiscoverySite) {
     this.isAnimating = false;
-    this.scaleFactor = siteId.startsWith('jesus_') ? 0.60 : 1;
+    this.scaleFactor = /^(jesus_|arch_)/.test(siteId) ? 0.60 : 1;
     this.group = new THREE.Group();
     this.group.name = 'Marker';
 
@@ -320,7 +329,7 @@
 
     // glow
     this.glow = new THREE.Mesh(sharedGeo, sharedMat.clone());
-    if (!isJourneySite) this.glow.material.color.set(cfg.colors.globeMarkerGlow);
+    if (isDiscoverySite) this.glow.material.color.set(cfg.colors.globeMarkerGlow);
     this.glow.material.opacity = 0.6;
     this.group.add(this.glow);
     els.markerPoint.push(this.glow);
@@ -413,7 +422,7 @@
     }
   };
 
-  function Markers(discoverySites, journeySites) {
+  function Markers(discoverySites, journeySites, archaeologySites) {
     var geo     = new THREE.SphereGeometry(2, 15, 15);
     var hitGeo  = new THREE.SphereGeometry(5, 8, 8);
     var mat     = new THREE.MeshBasicMaterial({ color: cfg.colors.globeMarkerColor, transparent: true, opacity: 0.8 });
@@ -422,14 +431,15 @@
     grps.markers = new THREE.Group();
     grps.markers.name = 'GlobeMarkers';
 
-    var sites = Object.assign({}, discoverySites, journeySites);
+    var sites = Object.assign({}, discoverySites, journeySites, archaeologySites);
     Object.keys(sites).forEach(function (id) {
       var site = sites[id];
       if (site.water) return;
       var isJourneySite = Boolean(journeySites[id]);
       var radius = isJourneySite ? missionRouteRadius : cfg.sizes.globe;
       var coords = coordToPos(site.lat, site.lon, radius);
-      els.markers.push(new Marker(isJourneySite ? missionMat : mat, geo, hitGeo, coords, id, isJourneySite));
+      var isDiscoverySite = Boolean(discoverySites[id]);
+      els.markers.push(new Marker(isDiscoverySite ? mat : missionMat, geo, hitGeo, coords, id, isDiscoverySite));
     });
   }
 
@@ -661,7 +671,8 @@
     grps.globe.add(grps.points);
 
     if (app.showPoints) {
-      new Markers(NOVUM_BOOK_DISCOVERIES.sites, Object.assign({}, journeyAtlases.paul.sites, journeyAtlases.jesus.sites));
+      new Markers(NOVUM_BOOK_DISCOVERIES.sites, Object.assign({}, journeyAtlases.paul.sites, journeyAtlases.jesus.sites),
+        NOVUM_ARCHAEOLOGY.sites);
       grps.globe.add(grps.markers);
       Object.keys(journeyAtlases).forEach(function (key) {
         missionRoutes[key] = createMissionRoutes(journeyAtlases[key]);
@@ -698,6 +709,7 @@
     var explorer = null;
     var atlasView = null;
     var renderTownLabels;
+    var updateAtlasCamera;
 
     var W = container.clientWidth;
     var H = container.clientHeight || W;
@@ -763,6 +775,22 @@
       raycaster.setFromCamera(mouse, camera);
       var hits = raycaster.intersectObjects(visible.map(function (h) { return h.mesh; }).concat([els.globe]));
       if (!hits.length || hits[0].object === els.globe) return null;
+      if (atlasView === 'archaeology' || atlasView === 'books') {
+        // Nearby findspots can share a hit area at the default regional zoom.
+        var globeHit = hits.findIndex(function (hit) { return hit.object === els.globe; });
+        var candidates = globeHit < 0 ? hits : hits.slice(0, globeHit);
+        var closest = null;
+        var closestDistance = Infinity;
+        var projected = new THREE.Vector3();
+        candidates.forEach(function (hit) {
+          hit.object.getWorldPosition(projected).project(camera);
+          var distance = Math.hypot(projected.x - mouse.x, projected.y - mouse.y);
+          if (distance >= closestDistance) return;
+          closest = hit;
+          closestDistance = distance;
+        });
+        return visible.find(function (h) { return h.mesh === closest.object; });
+      }
       return visible.find(function (h) { return h.mesh === hits[0].object; }) || null;
     }
     container.addEventListener('mousemove', function (e) {
@@ -798,20 +826,56 @@
     if (isFullscreenView) {
       var overviewView = null;
       var overviewDistance = orbitControls.maxDistance;
+      var overviewMinimum = orbitControls.minDistance;
+      var regionalView = null;
+      var artifactSitesKey = null;
+      var cameraTravel = null;
+      var spherical = new THREE.Spherical();
+      var targetView = new THREE.Spherical();
+      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      function angleFrom(angle, center) {
+        var delta = angle - center;
+        return Math.atan2(Math.sin(delta), Math.cos(delta));
+      }
+
+      function limitToRegion(view) {
+        if (!regionalView) return;
+        var region = regionalView;
+        // Measure angles around the region so a bound can cross the ±π seam.
+        var theta = angleFrom(view.theta, region.theta);
+        view.theta = region.theta + clamp(theta, region.minTheta, region.maxTheta);
+        view.phi = clamp(view.phi, region.minPhi, region.maxPhi);
+        view.radius = clamp(view.radius, region.minDistance, region.maxDistance);
+      }
+
+      function applyZoomLimits() {
+        orbitControls.minDistance = regionalView ? regionalView.minDistance : overviewMinimum;
+        orbitControls.maxDistance = regionalView ? regionalView.maxDistance : overviewDistance;
+      }
+
+      function cancelCameraTravel() {
+        if (!cameraTravel) return;
+        cameraTravel = null;
+        applyZoomLimits();
+      }
 
       function adjustNavigationSpeed() {
         var distance = camera.position.length();
         var clearance = distance - cfg.sizes.globe;
         orbitControls.zoomSpeed = clearance / distance;
-        orbitControls.rotateSpeed = atlasView === 'jesus' ? clamp(clearance * 0.0014, 0.006, 0.07) : 0.07;
+        orbitControls.dampingFactor = atlasView ? navigation.regionalDragDamping : 0.16;
+        orbitControls.rotateSpeed = clamp(clearance * navigation.rotatePerClearance, 0.007, 0.12);
       }
 
       orbitControls.addEventListener('change', adjustNavigationSpeed);
+      orbitControls.addEventListener('start', cancelCameraTravel);
       adjustNavigationSpeed();
       renderer.domElement.addEventListener('wheel', function (event) {
         if (!event.deltaY) return;
         event.preventDefault();
         event.stopImmediatePropagation();
+        cancelCameraTravel();
         var unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? renderer.domElement.clientHeight : 1;
         var delta = clamp(event.deltaY * unit, -150, 150);
         var surface = cfg.sizes.globe;
@@ -833,7 +897,48 @@
         orbitControls.enableDamping = true;
       }
 
-      function fitSites(sites, minimumDistance) {
+      function goToView(destination, animated) {
+        var origin = camera.position.clone();
+        cameraTravel = null;
+        if (!animated || reducedMotion.matches || origin.distanceToSquared(destination) < 0.0001) {
+          applyZoomLimits();
+          moveCamera(destination);
+          return;
+        }
+        // Keep both ends reachable while a changed filter settles into its new limits.
+        orbitControls.minDistance = Math.min(origin.length(), destination.length());
+        orbitControls.maxDistance = Math.max(origin.length(), destination.length());
+        moveCamera(origin);
+        cameraTravel = {
+          from: new THREE.Spherical().setFromVector3(origin),
+          to: new THREE.Spherical().setFromVector3(destination),
+          start: performance.now()
+        };
+      }
+
+      updateAtlasCamera = function (now) {
+        if (cameraTravel) {
+          var from = cameraTravel.from;
+          var to = cameraTravel.to;
+          var progress = clamp((now - cameraTravel.start) / navigation.travelDuration, 0, 1);
+          var eased = progress * progress * (3 - 2 * progress);
+          var radius = cfg.sizes.globe;
+          var clearance = (from.radius - radius) * Math.pow((to.radius - radius) / (from.radius - radius), eased);
+          spherical.set(radius + clearance, from.phi + (to.phi - from.phi) * eased,
+            from.theta + angleFrom(to.theta, from.theta) * eased);
+          camera.position.setFromSpherical(spherical);
+          if (progress === 1) cancelCameraTravel();
+        }
+        orbitControls.update();
+        if (regionalView && !cameraTravel) {
+          spherical.setFromVector3(camera.position);
+          limitToRegion(spherical);
+          camera.position.setFromSpherical(spherical);
+          camera.lookAt(orbitControls.target);
+        }
+      };
+
+      function makeRegionalView(sites, minimumDistance, minClearance) {
         var latitudes = sites.map(function (site) { return site.lat; });
         var longitudes = sites.map(function (site) { return site.lon; });
         var lat = (Math.min.apply(null, latitudes) + Math.max.apply(null, latitudes)) / 2;
@@ -847,24 +952,67 @@
           var depth = point.dot(direction);
           var offset = point.addScaledVector(direction, -depth).length();
           return Math.max(required, depth + offset / viewSlope);
-        }, minimumDistance || radius * 1.08);
+        }, minimumDistance);
         distance = Math.min(distance, overviewDistance);
-        orbitControls.maxDistance = distance;
-        setSpin(false);
-        anims.rotateSpeed = 0;
-        moveCamera(direction.multiplyScalar(distance).applyEuler(grps.globe.rotation));
+        var position = direction.multiplyScalar(distance).applyEuler(grps.globe.rotation);
+        var center = new THREE.Spherical().setFromVector3(position);
+        var angles = sites.map(function (site) {
+          var direction = coordToPos(site.lat, site.lon, 1).applyEuler(grps.globe.rotation);
+          return new THREE.Spherical().setFromVector3(direction);
+        });
+        var thetas = angles.map(function (view) { return angleFrom(view.theta, center.theta); });
+        var phis = angles.map(function (view) { return view.phi; });
+        var padding = navigation.angularPadding;
+        return {
+          position: position, minDistance: radius + minClearance, maxDistance: distance, theta: center.theta,
+          minTheta: Math.min.apply(null, thetas) - padding, maxTheta: Math.max.apply(null, thetas) + padding,
+          minPhi: Math.max(0.001, Math.min.apply(null, phis) - padding),
+          maxPhi: Math.min(Math.PI - 0.001, Math.max.apply(null, phis) + padding)
+        };
       }
 
-      function fitDiscoverySites() {
-        fitSites(Object.values(NOVUM_BOOK_DISCOVERIES.sites));
+      function fitSites(sites, minimumDistance, animated) {
+        setSpin(false);
+        anims.rotateSpeed = 0;
+        regionalView = makeRegionalView(sites, minimumDistance, 4);
+        goToView(regionalView.position, animated);
+      }
+
+      function showArtifactSites(sites, active) {
+        showSites(sites, active);
+        var key = Array.from(sites).sort().join(',');
+        if (artifactSitesKey === key) return;
+        var initial = artifactSitesKey === null;
+        artifactSitesKey = key;
+        var catalog = atlasView === 'books' ? NOVUM_BOOK_DISCOVERIES.sites : NOVUM_ARCHAEOLOGY.sites;
+        var locations = sites.size ? Array.from(sites, function (id) { return catalog[id]; }) : Object.values(catalog);
+        if (cameraTravel) targetView.copy(cameraTravel.to);
+        else targetView.setFromVector3(camera.position);
+        var destination = new THREE.Vector3().setFromSpherical(targetView);
+        var atOverview = regionalView && destination.distanceToSquared(regionalView.position) < 0.0001;
+        regionalView = makeRegionalView(locations, cfg.sizes.globe + navigation.artifactOverviewClearance,
+          navigation.artifactMinClearance);
+        if (initial || atOverview) {
+          goToView(regionalView.position, !initial);
+        } else {
+          limitToRegion(targetView);
+          goToView(destination.setFromSpherical(targetView), true);
+        }
       }
 
       explorer = window.createGlobeExplorer({
         section: globeSection,
         container: container,
         discoveries: NOVUM_BOOK_DISCOVERIES,
+        archaeology: NOVUM_ARCHAEOLOGY,
         journeys: journeyAtlases,
         setAtlasView: function (atlas) {
+          if (atlasView !== atlas) {
+            cancelCameraTravel();
+            regionalView = null;
+            artifactSitesKey = null;
+            applyZoomLimits();
+          }
           atlasView = atlas;
           var points = els.globePoints;
           points.material.uniforms.fineTerrain.value = atlas ? 1 : 0;
@@ -878,14 +1026,19 @@
             };
           } else if (!atlas && overviewView) {
             grps.globe.rotation.y = overviewView.rotation;
-            orbitControls.maxDistance = overviewDistance;
             moveCamera(overviewView.position);
             setSpin(overviewView.spinning);
             overviewView = null;
           }
+          if (atlas) {
+            setSpin(false);
+            anims.rotateSpeed = 0;
+          }
         },
-        fitDiscoverySites: fitDiscoverySites,
-        fitMission: function (key, index) {
+        resetArtifactView: function () {
+          goToView(regionalView.position, true);
+        },
+        fitMission: function (key, index, animated) {
           var atlas = journeyAtlases[key];
           var missions = atlas.missions;
           var selected = missions[index];
@@ -893,16 +1046,20 @@
           var sites = routes.reduce(function (result, mission) {
             return result.concat(mission.stops.map(function (stop) { return atlas.sites[stop.site]; }).filter(Boolean));
           }, []);
-          fitSites(sites, key === 'jesus' ? cfg.sizes.globe + 7 : undefined);
+          fitSites(sites, key === 'jesus' ? cfg.sizes.globe + 7 : cfg.sizes.globe * 1.08, animated);
         },
         showMissionRoute: showMissionRoute,
+        showArtifactSites: showArtifactSites,
         showSites: showSites,
         focusSite: function (siteId) {
-          var site = NOVUM_BOOK_DISCOVERIES.sites[siteId];
-          setSpin(false);
-          anims.rotateSpeed = 0;
-          var distance = camera.position.length();
-          moveCamera(coordToPos(site.lat, site.lon, distance).applyEuler(grps.globe.rotation));
+          var journey = journeyAtlases[atlasView];
+          var site = journey ? journey.sites[siteId] : NOVUM_BOOK_DISCOVERIES.sites[siteId] || NOVUM_ARCHAEOLOGY.sites[siteId];
+          if (!site || site.water) return;
+          var distance = Math.min(camera.position.length(), cfg.sizes.globe + navigation.siteClearance);
+          var destination = coordToPos(site.lat, site.lon, distance).applyEuler(grps.globe.rotation);
+          targetView.setFromVector3(destination);
+          limitToRegion(targetView);
+          goToView(destination.setFromSpherical(targetView), true);
         }
       });
     }
@@ -930,9 +1087,11 @@
     }
 
     function loop() {
-      animateMissionRoute(performance.now());
+      var now = performance.now();
+      animateMissionRoute(now);
+      if (updateAtlasCamera) updateAtlasCamera(now);
+      else orbitControls.update();
       animate(camera);
-      orbitControls.update();
       var local = atlasView === 'jesus' && camera.position.length() < cfg.sizes.globe + 18 ? 1 : 0;
       var points = els.globePoints;
       if (local !== points.material.uniforms.localTerrain.value) {

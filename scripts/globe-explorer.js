@@ -6,7 +6,7 @@
     { label: "Jesus' journey", journey: "jesus" },
     { label: "Moses' journey", description: "Places associated with the story of Moses." },
     { label: "Biblical books", discoveryTimeline: true },
-    { label: "Archaeological discoveries", description: "Archaeological discoveries connected to biblical history." },
+    { label: "Archaeological discoveries", archaeology: true },
     { label: "Christianity spreading", description: "The spread of early Christianity across the ancient world." }
   ];
 
@@ -102,9 +102,7 @@
     var previous = button('Previous date', 'explorer-control-button', timelineActions, function () {
       changeYear(artifactYears().filter(function (value) { return value < year; }).pop());
     });
-    button('Reset view', 'explorer-control-button', timelineActions, function () {
-      options.fitDiscoverySites();
-    });
+    button('Reset view', 'explorer-control-button', timelineActions, options.resetArtifactView);
     var next = button('Next date', 'explorer-control-button', timelineActions, function () {
       changeYear(artifactYears().find(function (value) { return value > year; }));
     });
@@ -198,7 +196,7 @@
         routeOutput.className = 'explorer-gospel-map-event';
       }
       button('Reset view', 'explorer-control-button', routeActions, function () {
-        options.fitMission(key, missionIndex);
+        options.fitMission(key, missionIndex, true);
       });
       if (isPaul) {
         nextStop = button('Next stop', 'explorer-control-button', routeActions, function () { goToStop(routeEnd + 1); });
@@ -246,6 +244,7 @@
           var track = { gospel: gospel, cursor: -1, markers: [] };
 
           function selectMarker(marker, reveal) {
+            if (reveal) options.focusSite(mission.stops[marker.index].site);
             if (marker.index === selectedStop && selectedGospel === gospel) {
               if (reveal) revealMissionDetail();
               return;
@@ -299,15 +298,24 @@
             return nearest;
           }
 
+          var press = null;
           lane.addEventListener('pointerdown', function (event) {
             if (event.pointerType !== 'mouse' || event.button !== 0) return;
             event.preventDefault();
+            press = { x: event.clientX, y: event.clientY };
             lane.setPointerCapture(event.pointerId);
             scrub(event).node.focus({ preventScroll: true });
           });
           lane.addEventListener('pointermove', function (event) {
-            if (lane.hasPointerCapture(event.pointerId) && event.buttons === 1) scrub(event);
+            if (!lane.hasPointerCapture(event.pointerId) || event.buttons !== 1) return;
+            if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 5) press = null;
+            scrub(event);
           });
+          lane.addEventListener('pointerup', function (event) {
+            if (press && lane.hasPointerCapture(event.pointerId)) selectMarker(scrub(event), true);
+            press = null;
+          });
+          lane.addEventListener('lostpointercapture', function () { press = null; });
           return track;
         });
         return { tracks: tracks, grid: grid };
@@ -346,6 +354,7 @@
             selectedStop = index;
             routeEnd = Math.max(routeEnd, index);
             updateMissionRoute();
+            options.focusSite(stop.site);
             showStopDetail();
             revealMissionDetail();
           });
@@ -547,6 +556,7 @@
           selectedGospel = '';
           selectedStop = index;
           updateMissionRoute();
+          options.focusSite(site);
           showStopDetail();
           revealMissionDetail();
         }
@@ -554,6 +564,169 @@
     }
 
     var journeys = { paul: buildJourneyAtlas('paul', options.journeys.paul), jesus: buildJourneyAtlas('jesus', options.journeys.jesus) };
+
+    function buildArchaeologyAtlas(data) {
+      var dated = data.records.filter(function (record) { return record.period; }).sort(function (a, b) {
+        return a.period[0] - b.period[0];
+      });
+      var undated = data.records.filter(function (record) { return !record.period; });
+      var min = sliderYear(dated[0].period[0]);
+      var max = sliderYear(Math.max.apply(null, dated.map(function (record) { return record.period[1]; })));
+      var date = min;
+      var genre = '';
+      var selection = null;
+      var visible = [];
+
+      var controls = element('div', 'explorer-timeline explorer-archaeology-timeline');
+      var header = element('div', 'explorer-timeline-header', null, controls);
+      var label = element('label', 'explorer-label', 'Artifact date', header);
+      label.htmlFor = 'archaeology-year';
+      var output = element('output', '', null, header);
+      output.htmlFor = label.htmlFor;
+      var range = element('input', '', null, controls);
+      range.id = label.htmlFor;
+      range.type = 'range';
+      range.min = min;
+      range.max = max;
+      range.addEventListener('input', function () {
+        date = Number(range.value);
+        render();
+      });
+      var endpoints = element('div', 'explorer-timeline-years explorer-muted', null, controls);
+      element('span', '', formatYear(min), endpoints);
+      element('span', '', formatYear(max), endpoints);
+      var actions = element('div', 'explorer-timeline-actions', null, controls);
+      var back = button('Previous date', 'explorer-control-button', actions, function () { step(-1); });
+      button('Reset view', 'explorer-control-button', actions, options.resetArtifactView);
+      var forward = button('Next date', 'explorer-control-button', actions, function () { step(1); });
+
+      var sidebar = element('div', 'explorer-archaeology-sidebar');
+      element('h2', '', 'Archaeological discoveries', sidebar);
+      element('p', 'explorer-muted', 'Findings appear at the start of their estimated artifact or site-layer dates.', sidebar);
+      var genreLabel = element('label', 'explorer-label', 'Genre', sidebar);
+      genreLabel.htmlFor = 'archaeology-genre';
+      var select = element('select', 'explorer-input', null, sidebar);
+      select.id = genreLabel.htmlFor;
+      element('option', '', 'All genres', select).value = '';
+      Array.from(new Set(data.records.map(function (record) { return record.genre; }))).sort().forEach(function (name) {
+        element('option', '', name, select).value = name;
+      });
+      select.addEventListener('change', function () {
+        genre = select.value;
+        render();
+      });
+      var summary = element('h3', '', '', sidebar);
+      var findings = element('ul', 'explorer-archaeology-findings', null, sidebar);
+      var context = element('details', 'explorer-archaeology-context', null, sidebar);
+      element('summary', '', 'Undated and contextual entries', context);
+      var contextList = element('ul', 'explorer-archaeology-findings', null, context);
+      var detail = element('div', 'explorer-archaeology-detail');
+
+      function matchesGenre(record) {
+        return !genre || record.genre === genre;
+      }
+
+      function dates() {
+        return dated.filter(matchesGenre).map(function (record) { return sliderYear(record.period[0]); });
+      }
+
+      function step(direction) {
+        var candidates = dates();
+        var value = direction < 0 ? candidates.filter(function (candidate) { return candidate < date; }).pop() :
+          candidates.find(function (candidate) { return candidate > date; });
+        if (value === undefined) return;
+        date = value;
+        render();
+      }
+
+      function selectFinding(record) {
+        selection = record;
+        render();
+        if (record.site) options.focusSite(record.site);
+        details.scrollTop = 0;
+        if (window.matchMedia('(max-width: 800px)').matches) details.scrollIntoView({ block: 'start' });
+      }
+
+      function appendFindings(list, records) {
+        list.replaceChildren();
+        records.forEach(function (record) {
+          var row = button('', 'explorer-project', element('li', '', null, list), function () {
+            selectFinding(record);
+            var selectedRow = list.querySelector('[aria-pressed="true"]');
+            if (selectedRow && list.isConnected) selectedRow.focus({ preventScroll: true });
+          });
+          row.setAttribute('aria-pressed', String(record === selection));
+          element('span', 'explorer-project-name', record.title, row);
+          element('span', 'explorer-project-location', record.age, row);
+        });
+      }
+
+      function renderDetail() {
+        detail.replaceChildren();
+        if (!selection) {
+          element('h2', '', 'Select a finding', detail);
+          element('p', 'explorer-muted', 'Choose a map dot or a finding from the list to see its date, context, and source.', detail);
+          return;
+        }
+        var site = data.sites[selection.site];
+        element('h2', '', selection.title, detail);
+        element('p', 'explorer-label', selection.genre, detail);
+        element('p', '', selection.age, detail);
+        element('p', 'explorer-muted', site ? site.title + ' · ' + site.region :
+          selection.period ? 'Archaeological findspot uncertain' : 'Context entry · No mapped findspot', detail);
+        element('hr', 'explorer-story-divider', null, detail);
+        element('h3', 'explorer-story-section', 'Evidence and interpretation', detail);
+        element('p', '', selection.evidence, detail);
+        if (selection.recovery) {
+          element('h3', 'explorer-story-section', 'Recovery or provenance', detail);
+          element('p', '', selection.recovery, detail);
+        }
+        element('h3', 'explorer-story-section', 'Biblical reference', detail);
+        element('p', '', selection.reference, detail);
+        externalLink(selection.source[0], selection.source[1], detail);
+        var atSite = site ? visible.filter(function (record) { return record !== selection && record.site === selection.site; }) : [];
+        if (atSite.length) {
+          var other = element('details', 'explorer-archaeology-context', null, detail);
+          element('summary', '', 'More findings at this site', other);
+          appendFindings(element('ul', 'explorer-archaeology-findings', null, other), atSite);
+        }
+      }
+
+      function render() {
+        visible = dated.filter(function (record) { return matchesGenre(record) && sliderYear(record.period[0]) <= date; });
+        var contextual = undated.filter(matchesGenre);
+        if (selection && !visible.includes(selection) && !contextual.includes(selection)) selection = null;
+        var sites = new Set(visible.map(function (record) { return record.site; }).filter(Boolean));
+        options.showArtifactSites(sites, selection && selection.site);
+        range.value = date;
+        output.value = formatYear(date);
+        range.setAttribute('aria-valuetext', output.value);
+        var years = dates();
+        back.disabled = !years.some(function (year) { return year < date; });
+        forward.disabled = !years.some(function (year) { return year > date; });
+        summary.textContent = sites.size + (sites.size === 1 ? ' mapped site' : ' mapped sites') + ' · ' +
+          visible.length + (visible.length === 1 ? ' dated finding' : ' dated findings');
+        appendFindings(findings, visible.slice().reverse());
+        context.hidden = !contextual.length;
+        appendFindings(contextList, contextual);
+        renderDetail();
+      }
+
+      return {
+        mount: function () {
+          routeHost.append(controls);
+          overviewBody.append(sidebar);
+          detailBody.append(detail);
+          render();
+        },
+        selectSite: function (site) {
+          var record = visible.slice().reverse().find(function (item) { return item.site === site; });
+          if (record) selectFinding(record);
+        }
+      };
+    }
+
+    var archaeology = buildArchaeologyAtlas(options.archaeology);
 
     function artifactYears() {
       return records.filter(function (record) {
@@ -567,10 +740,10 @@
       renderDiscoveries();
     }
 
-    function selectRecord(record, focus) {
+    function selectRecord(record) {
       active = active === record ? null : record;
-      if (active && record.site && focus) options.focusSite(record.site);
       renderDiscoveries();
+      if (active && record.site) options.focusSite(record.site);
     }
 
     function renderDiscoveries() {
@@ -579,7 +752,7 @@
       });
       var visibleSites = new Set(visibleRecords.map(function (record) { return record.site; }).filter(Boolean));
       if (!visibleRecords.includes(active)) active = null;
-      options.showSites(visibleSites, active && active.site);
+      options.showArtifactSites(visibleSites, active && active.site);
       slider.value = year;
       currentYear.value = formatYear(year);
       slider.setAttribute('aria-valuetext', formatYear(year));
@@ -613,7 +786,7 @@
         if (books.length > 3) element('span', 'explorer-book-tag-extra', '+' + (books.length - 3) + ' more', tags);
         summary.addEventListener('click', function (event) {
           event.preventDefault();
-          selectRecord(record, true);
+          selectRecord(record);
           discoveryResults.querySelectorAll('summary')[index].focus();
         });
         var body = element('div', 'explorer-discovery-body', null, card);
@@ -633,16 +806,19 @@
       overviewBody.replaceChildren();
       var atlas = atlases[selected];
       var isTimeline = Boolean(atlas && atlas.discoveryTimeline);
+      var isArchaeology = Boolean(atlas && atlas.archaeology);
       var journey = atlas && journeys[atlas.journey];
-      options.setAtlasView(isTimeline ? 'books' : journey ? atlas.journey : null);
+      options.setAtlasView(isTimeline ? 'books' : isArchaeology ? 'archaeology' : journey ? atlas.journey : null);
       root.classList.toggle('explorer-missions-active', Boolean(journey));
+      root.classList.toggle('explorer-archaeology-active', isArchaeology);
+      root.classList.toggle('explorer-books-active', isTimeline);
       root.classList.toggle('explorer-gospels-active', Boolean(atlas && atlas.journey === 'jesus'));
       timeline.hidden = !isTimeline;
       routeHost.replaceChildren();
-      hint.hidden = isTimeline || Boolean(journey);
-      center.classList.toggle('explorer-globe-with-timeline', isTimeline || Boolean(journey));
+      hint.hidden = isTimeline || isArchaeology || Boolean(journey);
+      center.classList.toggle('explorer-globe-with-timeline', isTimeline || isArchaeology || Boolean(journey));
       if (!journey) options.showMissionRoute(null);
-      if (!isTimeline && !journey) options.showSites(new Set(), null);
+      if (!isTimeline && !isArchaeology && !journey) options.showSites(new Set(), null);
       fitGlobe();
       clear.hidden = selected < 0;
       if (!atlas) {
@@ -654,13 +830,17 @@
         fitGlobe();
         return;
       }
+      if (isArchaeology) {
+        archaeology.mount();
+        fitGlobe();
+        return;
+      }
       element('h2', '', atlas.label, overviewBody);
       if (isTimeline) {
         element('p', 'explorer-muted', 'The timeline dates surviving artifacts. Records appear at the start of their estimated ranges. Each dot marks a findspot.', overviewBody);
         overviewBody.append(filter);
         element('h2', '', 'Biblical books', detailBody);
         detailBody.append(discoveryResults);
-        options.fitDiscoverySites();
         renderDiscoveries();
         return;
       }
@@ -693,6 +873,10 @@
     return {
       selectSite: function (site) {
         var atlas = atlases[selected];
+        if (atlas && atlas.archaeology) {
+          archaeology.selectSite(site);
+          return;
+        }
         var journey = atlas && journeys[atlas.journey];
         if (journey) {
           journey.selectSite(site);
@@ -702,6 +886,7 @@
         if (!record) return;
         active = record;
         renderDiscoveries();
+        options.focusSite(site);
         discoveryResults.querySelector('details[open]').scrollIntoView({ block: 'nearest' });
       }
     };
