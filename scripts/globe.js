@@ -8,8 +8,8 @@
     scale:   { points: 0.008, markers: 0.008, globeScale: 1 },
     colors: {
       globeDotColor:    'rgb(155, 155, 155)',
-      globeMarkerColor: 'rgb(200, 200, 200)',
-      globeMarkerGlow:  'rgb(255, 255, 255)',
+      globeMarkerColor: 'rgb(255, 197, 106)',
+      globeMarkerGlow:  'rgb(255, 224, 168)',
       globeLines:       'rgb(190, 190, 190)',
       globeLinesDots:   'rgb(220, 220, 220)'
     },
@@ -29,6 +29,7 @@
   };
   var ctrs = { interval: 20000, selected: null, index: 0 };
   var anims = { rotateSpeed: 0.0025, targetSpeed: 0.0025, hoveredMarkerIndex: -1, spinEnabled: true };
+  var selectedSite = null;
 
   // ── Shaders ───────────────────────────────────────────────────────────────
   var shaders = { atmosphere: {}, globe: {}, dot: {} };
@@ -146,28 +147,49 @@
   }
 
   // ── Points class ──────────────────────────────────────────────────────────
-  function Points() {
-    var radius = cfg.sizes.globe * (1 + cfg.scale.points);
-    var posArr = [], uvArr = [], sizeArr = [];
-    var total = 110000;
-    var goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  var globePointCount = 110000;
 
-    // One equal-area Fibonacci distribution over the entire sphere. Land is
-    // masked separately, so coastlines cannot change the spacing or form clumps.
-    for (var i = 0; i < total; i++) {
-      var y = 1 - 2 * (i + 0.5) / total;
-      var latitude = Math.asin(y);
-      var longitude = (i * goldenAngle) % (2 * Math.PI) - Math.PI;
-      var position = coordToPos(latitude * 180 / Math.PI, longitude * 180 / Math.PI, radius);
-      posArr.push(position.x, position.y, position.z);
-      uvArr.push((longitude + Math.PI) / (2 * Math.PI), latitude / Math.PI + 0.5);
-      sizeArr.push(cfg.sizes.globeDotSize);
+  function Points(includeDiscoveryDetail) {
+    var radius = cfg.sizes.globe * (1 + cfg.scale.points);
+    var posArr = [], uvArr = [], sizeArr = [], detailArr = [];
+    var goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    var radians = Math.PI / 180;
+    // Cover the eastern Mediterranean and taper into the global dots at the edges.
+    var south = 18 * radians, north = 46 * radians;
+    var west = 18 * radians, east = 54 * radians;
+    var fadeWidth = 3 * radians;
+
+    // Sample both resolutions with equal-area Fibonacci spacing and the same land mask.
+    function addPoints(total, start, end, fine) {
+      for (var i = start; i < end; i++) {
+        var longitude = (i * goldenAngle) % (2 * Math.PI) - Math.PI;
+        if (fine && (longitude <= west || longitude >= east)) continue;
+        var latitude = Math.asin(1 - 2 * (i + 0.5) / total);
+        var edgeDistance = Math.min(latitude - south, north - latitude, longitude - west, east - longitude);
+        var blend = clamp(edgeDistance / fadeWidth, 0, 1);
+        if (fine && blend === 0) continue;
+        var position = coordToPos(latitude / radians, longitude / radians, radius);
+        posArr.push(position.x, position.y, position.z);
+        uvArr.push((longitude + Math.PI) / (2 * Math.PI), latitude / Math.PI + 0.5);
+        sizeArr.push(cfg.sizes.globeDotSize * (fine ? 0.33 : 1));
+        detailArr.push(fine ? blend : -blend);
+      }
+    }
+
+    addPoints(globePointCount, 0, globePointCount, false);
+    if (includeDiscoveryDetail) {
+      var finePointCount = globePointCount * 12;
+      var start = Math.floor(finePointCount * (1 - Math.sin(north)) / 2);
+      var end = Math.ceil(finePointCount * (1 - Math.sin(south)) / 2);
+      addPoints(finePointCount, start, end, true);
     }
 
     var geo = new THREE.BufferGeometry();
     geo.addAttribute('position',    new THREE.BufferAttribute(new Float32Array(posArr),  3));
     geo.addAttribute('landUv',      new THREE.BufferAttribute(new Float32Array(uvArr),   2));
     geo.addAttribute('size',        new THREE.BufferAttribute(new Float32Array(sizeArr), 1));
+    geo.addAttribute('detail',      new THREE.BufferAttribute(new Float32Array(detailArr), 1));
+    geo.setDrawRange(0, globePointCount);
 
     // Screen-facing circles, shaded by their position on the sphere. Keeping
     // light in view space gives the globe a steady studio-light finish on drag.
@@ -178,14 +200,18 @@
     var mat = new THREE.ShaderMaterial({
       uniforms: {
         pixelRatio: { value: Math.min(window.devicePixelRatio || 1, 2) },
-        landMask: { value: landMask }
+        landMask: { value: landMask },
+        fineTerrain: { value: 0 }
       },
       vertexShader: [
         'attribute float size;',
+        'attribute float detail;',
         'attribute vec2 landUv;',
         'varying vec2 vLandUv;',
         'uniform float pixelRatio;',
+        'uniform float fineTerrain;',
         'varying float vLight;',
+        'varying float vOpacity;',
         'void main() {',
         '  vLandUv = landUv;',
         '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
@@ -194,20 +220,26 @@
         '  float facing = max(dot(n, view), 0.0);',
         '  float light = max(dot(n, normalize(vec3(-0.7, 0.85, 1.0))), 0.0);',
         '  vLight = (0.14 + light * 0.46) * smoothstep(0.0, 0.25, facing);',
+        '  float blend = smoothstep(0.0, 1.0, abs(detail));',
+        '  vOpacity = detail > 0.0 ? blend : 1.0 - blend * fineTerrain;',
         '  gl_Position = projectionMatrix * mv;',
-        '  gl_PointSize = max(1.0, size * pixelRatio * (300.0 / -mv.z));',
+        '  float dotSize = size * (300.0 / -mv.z);',
+        '  if (detail > 0.0) dotSize = min(dotSize, 2.5);',
+        '  gl_PointSize = max(1.0, dotSize * pixelRatio);',
         '}'
       ].join('\n'),
       fragmentShader: [
         'uniform sampler2D landMask;',
         'varying vec2 vLandUv;',
         'varying float vLight;',
+        'varying float vOpacity;',
         'void main() {',
+        '  if (vOpacity == 0.0) discard;',
         '  if (texture2D(landMask, vLandUv).r < 0.5) discard;',
         '  float r = length(gl_PointCoord - vec2(0.5));',
         '  if (r > 0.5) discard;',
         '  float alpha = 1.0 - smoothstep(0.30, 0.5, r);',
-        '  gl_FragColor = vec4(vec3(vLight), alpha);',
+        '  gl_FragColor = vec4(vec3(vLight), alpha * vOpacity);',
         '}'
       ].join('\n'),
       transparent: true,
@@ -224,7 +256,7 @@
 
 
   // ── Marker class ──────────────────────────────────────────────────────────
-  function Marker(sharedMat, sharedGeo, hitGeo, label, cords, projectData) {
+  function Marker(sharedMat, sharedGeo, hitGeo, cords, siteId) {
     this.isAnimating = false;
     this.group = new THREE.Group();
     this.group.name = 'Marker';
@@ -245,9 +277,10 @@
     // invisible hit zone — larger sphere so raycasting is forgiving
     var hitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
     this.group.add(hitMesh);
-    els.markerHits.push({ mesh: hitMesh, data: projectData, point: this.point, group: this.group });
+    els.markerHits.push({ mesh: hitMesh, site: siteId, point: this.point, group: this.group });
 
     this.group.position.copy(cords);
+    this.group.visible = false;
     grps.markers.add(this.group);
   }
 
@@ -265,27 +298,19 @@
     }
   };
 
-  function Markers(countries) {
-    var radius  = cfg.sizes.globe + cfg.sizes.globe * cfg.scale.markers;
+  function Markers(sites) {
     var geo     = new THREE.SphereGeometry(2, 15, 15);
-    var hitGeo  = new THREE.SphereGeometry(10, 8, 8);
+    var hitGeo  = new THREE.SphereGeometry(5, 8, 8);
     var mat     = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.8 });
 
     grps.markers = new THREE.Group();
     grps.markers.name = 'GlobeMarkers';
 
-    for (var i = 0; i < countries.length; i++) {
-      var c = countries[i];
-      var lat = Number(c.latitude), lon = Number(c.longitude);
-      if (c.latitude != null && c.longitude != null &&
-          String(c.latitude).trim() !== '' && String(c.longitude).trim() !== '' &&
-          Number.isFinite(lat) && Number.isFinite(lon) &&
-          Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-        var cords = coordToPos(lat, lon, radius);
-        var marker = new Marker(mat, geo, hitGeo, c.name, cords, c);
-        els.markers.push(marker);
-      }
-    }
+    Object.keys(sites).forEach(function (id) {
+      var site = sites[id];
+      var cords = coordToPos(site.lat, site.lon, cfg.sizes.globe);
+      els.markers.push(new Marker(mat, geo, hitGeo, cords, id));
+    });
   }
 
   // ── Dot / Dots ────────────────────────────────────────────────────────────
@@ -390,7 +415,9 @@
     app.controls.enableDamping = true;
     app.controls.dampingFactor = 0.05;
     app.controls.rotateSpeed   = 0.07;
-    app.controls.enableZoom    = false;
+    app.controls.enableZoom    = app.showPoints;
+    app.controls.minDistance   = cfg.sizes.globe + 4;
+    app.controls.maxDistance   = cfg.sizes.globe * 2.2;
     app.controls.enablePan     = false;
 
     grps.main = new THREE.Group(); grps.main.name = 'Main';
@@ -398,30 +425,28 @@
     var globe = new Globe();
     grps.main.add(globe);
 
-    new Points();
+    new Points(app.showPoints);
     grps.globe.add(grps.points);
 
     if (app.showPoints) {
-      var novumPoints = NOVUM_POINTS.map(function (p) {
-        return Object.assign({}, p, { name: p.title, latitude: p.lat, longitude: p.lon });
-      });
-      new Markers(novumPoints);
+      new Markers(NOVUM_BOOK_DISCOVERIES.sites);
       grps.globe.add(grps.markers);
     }
 
     app.scene.add(grps.main);
   }
 
-  function animate() {
+  function animate(camera) {
+    var markerScale = (camera.position.length() - cfg.sizes.globe) / (cfg.sizes.globe * 1.2);
     for (var j = 0; j < els.markers.length; j++) {
       var m = els.markers[j];
-      m.point.material.color.set(cfg.colors.globeMarkerColor);
-      m.glow.material.color.set(cfg.colors.globeMarkerGlow);
+      m.group.scale.setScalar(markerScale);
+      if (!m.group.visible) continue;
       m.animateGlow();
     }
     for (var k = 0; k < els.markerHits.length; k++) {
       var h = els.markerHits[k];
-      var tgt = (h.group.visible && k === anims.hoveredMarkerIndex) ? 3 : 1;
+      var tgt = (k === anims.hoveredMarkerIndex || h.site === selectedSite) ? 1.8 : 1;
       h.point.scale.x += (tgt - h.point.scale.x) * 0.15;
       h.point.scale.y += (tgt - h.point.scale.y) * 0.15;
       h.point.scale.z += (tgt - h.point.scale.z) * 0.15;
@@ -490,12 +515,14 @@
     var mouse = new THREE.Vector2(-999, -999);
 
     function markerAtEvent(e) {
+      var visible = els.markerHits.filter(function (h) { return h.group.visible; });
+      if (!visible.length) return null;
       var rect = container.getBoundingClientRect();
       mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      camera.updateMatrixWorld();
+      grps.globe.updateMatrixWorld(true);
       raycaster.setFromCamera(mouse, camera);
-      // Hidden markers must not intercept the ray before a visible project.
-      var visible = els.markerHits.filter(function (h) { return h.group.visible; });
       var hits = raycaster.intersectObjects(visible.map(function (h) { return h.mesh; }).concat([els.globe]));
       if (!hits.length || hits[0].object === els.globe) return null;
       return visible.find(function (h) { return h.mesh === hits[0].object; }) || null;
@@ -505,16 +532,25 @@
       anims.hoveredMarkerIndex = hit ? els.markerHits.indexOf(hit) : -1;
       container.style.cursor = hit ? 'pointer' : 'grab';
     });
-    // Ignore drag gestures when deciding whether a click selects a project.
+    // Ignore drag gestures when deciding whether a click selects a site.
     var pointerStart = null;
-    container.addEventListener('pointerdown', function (e) { pointerStart = { x: e.clientX, y: e.clientY }; });
+    container.addEventListener('pointerdown', function (e) {
+      if (e.isPrimary && e.button === 0) pointerStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    });
     container.addEventListener('pointerup', function (e) {
       var start = pointerStart;
+      if (!start || e.pointerId !== start.id) return;
       pointerStart = null;
-      if (!start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
+      if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 5) return;
       if (!isFullscreenView) {
         window.open(new URL('index.html#globe-fullscreen', window.location.href).href, '_blank', 'noopener');
+      } else if (explorer) {
+        var hit = markerAtEvent(e);
+        if (hit) explorer.selectSite(hit.site);
       }
+    });
+    container.addEventListener('pointercancel', function (e) {
+      if (pointerStart && pointerStart.id === e.pointerId) pointerStart = null;
     });
 
     var orbitControls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -522,14 +558,78 @@
     var app = { scene: scene, camera: camera, controls: orbitControls, renderer: renderer, showPoints: isFullscreenView };
     setup(app);
     if (isFullscreenView) {
+      var overviewView = null;
+
+      function setSpin(enabled) {
+        anims.spinEnabled = enabled;
+        anims.targetSpeed = enabled ? 0.0025 : 0;
+      }
+
+      function moveCamera(position) {
+        orbitControls.enableDamping = false;
+        orbitControls.update();
+        camera.position.copy(position);
+        orbitControls.update();
+        orbitControls.enableDamping = true;
+      }
+
+      function fitDiscoverySites() {
+        var sites = Object.values(NOVUM_BOOK_DISCOVERIES.sites);
+        var latitudes = sites.map(function (site) { return site.lat; });
+        var longitudes = sites.map(function (site) { return site.lon; });
+        var lat = (Math.min.apply(null, latitudes) + Math.max.apply(null, latitudes)) / 2;
+        var lon = (Math.min.apply(null, longitudes) + Math.max.apply(null, longitudes)) / 2;
+        var direction = coordToPos(lat, lon, 1);
+        var radius = cfg.sizes.globe;
+        // The atlas canvas is square. Reserve space around the outermost findspots.
+        var viewSlope = Math.tan(camera.fov * Math.PI / 360) * 0.65;
+        var distance = sites.reduce(function (required, site) {
+          var point = coordToPos(site.lat, site.lon, radius);
+          var depth = point.dot(direction);
+          var offset = point.addScaledVector(direction, -depth).length();
+          return Math.max(required, depth + offset / viewSlope);
+        }, radius * 1.08);
+        setSpin(false);
+        anims.rotateSpeed = 0;
+        moveCamera(direction.multiplyScalar(distance).applyEuler(grps.globe.rotation));
+      }
+
       explorer = window.createGlobeExplorer({
         section: globeSection,
         container: container,
-        isSpinning: function () { return anims.spinEnabled; },
-        setSpin: function (enabled) {
-          anims.spinEnabled = enabled;
-          anims.targetSpeed = enabled ? 0.0025 : 0;
+        discoveries: NOVUM_BOOK_DISCOVERIES,
+        setDiscoveryView: function (open) {
+          var points = els.globePoints;
+          points.material.uniforms.fineTerrain.value = open ? 1 : 0;
+          points.geometry.setDrawRange(0, open ? points.geometry.attributes.position.count : globePointCount);
+          if (open && !overviewView) {
+            overviewView = {
+              position: camera.position.clone(),
+              rotation: grps.globe.rotation.y,
+              spinning: anims.spinEnabled
+            };
+            fitDiscoverySites();
+          } else if (!open && overviewView) {
+            grps.globe.rotation.y = overviewView.rotation;
+            moveCamera(overviewView.position);
+            setSpin(overviewView.spinning);
+            overviewView = null;
+          }
         },
+        fitDiscoverySites: fitDiscoverySites,
+        showSites: function (sites, active) {
+          selectedSite = active;
+          anims.hoveredMarkerIndex = -1;
+          els.markerHits.forEach(function (hit) { hit.group.visible = sites.has(hit.site); });
+        },
+        focusSite: function (siteId) {
+          var site = NOVUM_BOOK_DISCOVERIES.sites[siteId];
+          anims.rotateSpeed = 0;
+          var distance = camera.position.length();
+          moveCamera(coordToPos(site.lat, site.lon, distance).applyEuler(grps.globe.rotation));
+        },
+        isSpinning: function () { return anims.spinEnabled; },
+        setSpin: setSpin
       });
     }
 
@@ -556,7 +656,7 @@
     }
 
     function loop() {
-      animate();
+      animate(camera);
       orbitControls.update();
       renderer.render(scene, camera);
       requestAnimationFrame(loop);
