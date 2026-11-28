@@ -3,9 +3,6 @@ name: Build and deploy Novum
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "0 8 * * 1"
-      timezone: "America/Los_Angeles"
   workflow_dispatch:
   repository_dispatch:
     types: [codex-updated]
