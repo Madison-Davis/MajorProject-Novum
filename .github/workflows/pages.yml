@@ -38,51 +38,11 @@ jobs:
       - name: Install build dependencies
         run: python3 -m pip install -r requirements.txt
 
-      - name: Download private spreadsheet
-        env:
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-        run: |
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          from google.oauth2 import service_account
-          from google.auth.transport.requests import AuthorizedSession
-
-          credentials = service_account.Credentials.from_service_account_info(
-              json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]),
-              scopes=["https://www.googleapis.com/auth/drive.readonly"],
-          )
-          session = AuthorizedSession(credentials)
-          response = session.get(
-              "https://www.googleapis.com/drive/v3/files/"
-              "1lw2LpiM2jEvmdq0Gztmu4ftWzAi2UwILexoBLGTPfcA/export",
-              params={
-                  "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              },
-              timeout=60,
-          )
-          if not response.ok:
-              try:
-                  error = response.json().get("error", {})
-              except ValueError:
-                  error = {}
-              reasons = [item.get("reason", "unknown") for item in error.get("errors", [])]
-              raise SystemExit(
-                  f"Google Drive export failed (HTTP {response.status_code}; "
-                  f"reasons: {', '.join(reasons) or 'unspecified'}): "
-                  f"{error.get('message', 'No JSON error details returned')}"
-              )
-          destination = Path(os.environ["RUNNER_TEMP"]) / "novum.xlsx"
-          destination.write_bytes(response.content)
-          PY
-
       - name: Build Novum pages
         run: |
           python3 scripts/build-novum.py \
             "source-vault/Personal/Personal - Christian/Christian - Novum" \
-            site \
-            --sheets-workbook "$RUNNER_TEMP/novum.xlsx"
+            site
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
