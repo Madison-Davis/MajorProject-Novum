@@ -59,6 +59,30 @@ class MarkdownRenderingTest(unittest.TestCase):
             self.assertIn('Content', page)
             self.assertNotIn('<details ', page)
 
+    def test_build_includes_sheet_categories_without_note_folders(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'vault'
+            category = source / 'Novum - Apologetics'
+            category.mkdir(parents=True)
+            (category / 'Study.md').write_text('#### Faith\nNotes')
+            output = Path(folder) / 'site'
+            cells = {(1, 1): ('Header', False, True), (2, 1): ('Content', False, False)}
+            topics = {
+                name: [('Reference', cells)]
+                for name in ('Apologetics', 'Eschatology', 'Hamartiology', 'Soteriology')
+            }
+
+            with patch.object(builder, 'load_topics', return_value=topics):
+                count = builder.build(source, output, include_sheets=True)
+
+            self.assertEqual(count, 5)
+            index = (output / 'index.html').read_text()
+            for name in ('Eschatology', 'Hamartiology', 'Soteriology'):
+                self.assertIn(name.upper(), index)
+                page = output / 'pages' / name.lower() / 'sheet-reference.html'
+                self.assertTrue(page.is_file())
+                self.assertIn('Content', page.read_text())
+
 
 if __name__ == '__main__':
     unittest.main()

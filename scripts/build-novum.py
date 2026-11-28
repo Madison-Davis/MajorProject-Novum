@@ -203,19 +203,26 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
         shutil.copy2(assets / 'scripts' / name, output_scripts / name)
     shutil.copytree(assets / 'globe-assets', output_root / 'globe-assets')
 
-    categories = sorted(
-        (path for path in source_root.iterdir() if path.is_dir() and path.name.startswith("Novum - ")),
-        key=lambda path: path.name.casefold(),
-    )
+    categories = {}
+    for path in source_root.iterdir():
+        if path.is_dir() and path.name.startswith("Novum - "):
+            category = path.name.removeprefix("Novum - ").strip()
+            categories[category.casefold()] = (category, path)
+    sheet_categories = {category.casefold(): category for category in sheet_topics}
+    for key, category in sheet_categories.items():
+        categories.setdefault(key, (category, None))
+    categories = sorted(categories.values(), key=lambda item: item[0].casefold())
     if not categories:
         raise SystemExit(f"No 'Novum - X' category folders found under: {source_root}")
 
     accordions = []
     total_pages = 0
-    for category_index, category_dir in enumerate(categories, start=1):
-        category = category_dir.name.removeprefix("Novum - ").strip()
+    for category_index, (category, category_dir) in enumerate(categories, start=1):
         category_slug = slugify(category)
-        note_files = sorted(category_dir.rglob("*.md"), key=lambda path: path.as_posix().casefold())
+        note_files = sorted(
+            category_dir.rglob("*.md") if category_dir else [],
+            key=lambda path: path.as_posix().casefold(),
+        )
         cards = []
 
         for note_path in note_files:
@@ -240,7 +247,9 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
             )
             total_pages += 1
 
-        for sheet_name, cells in sheet_topics.pop(category, []):
+        sheet_category = sheet_categories.get(category.casefold())
+        category_topics = sheet_topics.pop(sheet_category, []) if sheet_category else []
+        for sheet_name, cells in category_topics:
             sheet_slug = "sheet-" + slugify(sheet_name)
             output_path = output_root / "pages" / category_slug / f"{sheet_slug}.html"
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -263,9 +272,6 @@ def build(source_root: Path, output_root: Path, sheets_workbook: Path | None = N
             f'<div class="course-grid lab-accord-grid">{"".join(cards)}</div>'
             f'</div></div></div>'
         )
-
-    if sheet_topics:
-        raise ValueError(f"Spreadsheet categories have no matching Obsidian folder: {', '.join(sheet_topics)}")
 
     index = f'''<!doctype html>
 <html lang="en">
