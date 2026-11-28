@@ -6,16 +6,7 @@
 
 ## How to push new content to website
 
-- Edit notes in the iCloud `compaulo-codex` Obsidian vault.
-    - When ready to insert, do `rsync -av --delete \
-  --exclude '/.git/' --exclude '/.github/' --exclude '/.gitignore' \
-  "$HOME/Library/Mobile Documents/iCloud~md~obsidian/Documents/compaulo-codex/" \
-  "$HOME/Desktop/Personal/Projects/compaulo-codex/"` to sync the local Desktop foler.
-- Push changes from this local to remote `Madison-Davis/MajorProject-Compaulo-Codex` on `main`.
-- Novum (its website and content from the vault) gets updated:
-    - When you push to `Madison-Davis/MajorProject-Compaulo-Codex` (for the Obsidian notes)
-    - When you push to `Madison-Davis/MajorProject-Novum`
-    - Compaulo also updates when you push to the content repo or its website repo.
+1. Obsidian's iCloud compaulo-codex vault automatically syncs with the one found in the Professional folder, which is linked to a remote github.  When ready, push changes from this local to remote `Madison-Davis/MajorProject-Compaulo-Codex` on `main`.
 
 ## GitHub secrets
 
